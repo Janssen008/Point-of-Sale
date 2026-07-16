@@ -1494,14 +1494,12 @@ class ApexMotoPOS {
       // Increment
       if (this.cart[cartIndex].quantity < part.stock) {
         this.cart[cartIndex].quantity++;
-        this.showToast(`Added another ${part.name} to cart`, "success");
       } else {
         this.showToast(`Insufficient stock! Only ${part.stock} items available.`, "warning");
       }
     } else {
       // New cart item
       this.cart.push({ partId, quantity: 1, price: part.price });
-      this.showToast(`Added ${part.name} to cart`, "success");
     }
 
     this.renderPOSCart();
@@ -1723,9 +1721,10 @@ class ApexMotoPOS {
 
     const receiptHtml = `
       <div class="receipt-header">
-        <div class="receipt-title">APEX MOTO SHOP</div>
-        <div style="font-size: 10px;">1024 High-Octane Highway, Sector 4</div>
-        <div style="font-size: 10px;">Tel: +1 (555) MOTO-POS</div>
+        <div class="receipt-title">DIEGO'S MOTORCYCLE</div>
+        <div style="font-size: 11px; margin-top: 2px;">PARTS & ACCESSORIES</div>
+        <div style="font-size: 10px; margin-top: 4px;">1024 High-Octane Highway, Sector 4</div>
+        <div style="font-size: 10px;">Tel: +1 (555) DIEGOS-MOTO</div>
       </div>
       <div class="receipt-divider"></div>
       <div class="receipt-row">
@@ -1762,7 +1761,7 @@ class ApexMotoPOS {
       </div>
       <div class="receipt-divider"></div>
       <div style="text-align:center; font-size:10px; margin-top: 15px; font-weight: bold;">
-        RIDE SAFE • APEX SERVICES
+        RIDE SAFE • DIEGO'S SHOP
         <div style="font-size: 9px; font-weight: normal; margin-top: 4px;">Thank you for your business!</div>
       </div>
     `;
