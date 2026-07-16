@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Display - Diego's Motorcycle Parts</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+    :root {
+      --bg-primary: #0a0c10;
+      --bg-secondary: #121620;
+      --bg-tertiary: #1b2130;
+      --bg-card: #151a26;
+      --accent: #ff5f1f;
+      --accent-hover: #e54f15;
+      --text-primary: #f0f3f6;
+      --text-secondary: #909bb0;
+      --text-muted: #5e697e;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --success: #00e676;
+      --warning: #ffb300;
+      --danger: #ff1744;
+      --font-display: 'Outfit', sans-serif;
+      --font-sans: 'Inter', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    header {
+      height: 80px;
+      background-color: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 40px;
+      flex-shrink: 0;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo-icon {
+      background: linear-gradient(135deg, var(--accent), #ff8f00);
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    .logo-icon svg {
+      width: 28px;
+      height: 28px;
+      fill: currentColor;
+    }
+
+    .logo-text {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      background: linear-gradient(to right, #ffffff, var(--text-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .logo-subtext {
+      font-size: 0.75rem;
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: -2px;
+    }
+
+    .live-time {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+      background: var(--bg-tertiary);
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+    }
+
+    /* Main Area */
+    main {
+      flex-grow: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* View: Welcome screen */
+    .view-welcome {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at center, rgba(255, 95, 31, 0.08) 0%, transparent 70%);
+      text-align: center;
+      padding: 40px;
+      z-index: 10;
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    .view-welcome.hidden {
+      opacity: 0;
+      transform: scale(0.95);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .welcome-title {
+      font-family: var(--font-display);
+      font-size: 3.5rem;
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 24px;
+      color: #fff;
+    }
+
+    .welcome-title span {
+      color: var(--accent);
+    }
+
+    .welcome-subtitle {
+      font-size: 1.4rem;
+      color: var(--text-secondary);
+      max-width: 600px;
+      line-height: 1.5;
+      margin-bottom: 48px;
+    }
+
+    .promo-cards {
+      display: flex;
+      gap: 24px;
+      max-width: 900px;
+    }
+
+    .promo-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      flex: 1;
+      text-align: left;
+      transition: transform 0.3s;
+    }
+
+    .promo-card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(255, 95, 31, 0.3);
+    }
+
+    .promo-icon {
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+
+    .promo-icon svg {
+      width: 32px;
+      height: 32px;
+      fill: currentColor;
+    }
+
+    .promo-title {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .promo-desc {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    /* View: Active Transaction screen */
+    .view-transaction {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      z-index: 5;
+      opacity: 0;
+      transform: scale(1.02);
+      pointer-events: none;
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    .view-transaction.active {
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+      z-index: 15;
+    }
+
+    /* Columns */
+    .col-items {
+      flex: 1.3;
+      padding: 30px 40px;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border-color);
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .col-summary {
+      flex: 0.9;
+      padding: 30px 40px;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--bg-secondary);
+      height: 100%;
+      overflow-y: auto;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 10px;
+    }
+
+    .item-list-container {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding-right: 10px;
+    }
+
+    .cart-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      margin-bottom: 12px;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .item-details {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-width: 70%;
+    }
+
+    .item-name {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .item-sku {
+      font-family: monospace;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      letter-spacing: 0.5px;
+    }
+
+    .item-pricing {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+    }
+
+    .item-total {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    /* Summary Card Styling */
+    .summary-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+    }
+
+    .summary-row.total-row {
+      border-top: 1px dashed var(--border-color);
+      padding-top: 16px;
+      margin-top: 16px;
+      margin-bottom: 0;
+      color: #fff;
+    }
+
+    .summary-total-label {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+
+    .summary-total-value {
+      font-family: var(--font-display);
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    /* Customer details inside Display */
+    .customer-profile {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(255, 95, 31, 0.05);
+      border: 1px solid rgba(255, 95, 31, 0.15);
+      border-radius: 16px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+    }
+
+    .customer-avatar {
+      width: 44px;
+      height: 44px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: white;
+      font-size: 1.1rem;
+    }
+
+    .customer-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .customer-name {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    .customer-vehicle {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+    }
+
+    /* Payment Panel */
+    .payment-panel {
+      background: rgba(0, 230, 118, 0.04);
+      border: 1px solid rgba(0, 230, 118, 0.15);
+      border-radius: 16px;
+      padding: 24px;
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+      animation: fadeIn 0.4s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .payment-title {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--success);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .payment-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .payment-label {
+      font-size: 1rem;
+      color: var(--text-secondary);
+    }
+
+    .payment-value {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .payment-value.change {
+      color: var(--success);
+      font-size: 1.8rem;
+    }
+
+    /* Receipt Screen / Complete Overlay */
+    .receipt-overlay {
+      position: absolute;
+      inset: 0;
+      background: var(--bg-primary);
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 40px;
+    }
+
+    .receipt-overlay.active {
+      display: flex;
+      animation: scaleUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes scaleUp {
+      from { opacity: 0; transform: scale(0.92); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      background: rgba(0, 230, 118, 0.1);
+      border: 2px solid var(--success);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--success);
+      margin-bottom: 24px;
+    }
+
+    .success-icon svg {
+      width: 44px;
+      height: 44px;
+      fill: currentColor;
+    }
+
+    .receipt-title {
+      font-family: var(--font-display);
+      font-size: 2.6rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+
+    .receipt-message {
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      margin-bottom: 36px;
+      max-width: 500px;
+    }
+
+    .receipt-summary-box {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px 40px;
+      min-width: 380px;
+      max-width: 450px;
+    }
+
+    .receipt-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-size: 1rem;
+      color: var(--text-secondary);
+    }
+
+    .receipt-row:last-child {
+      margin-bottom: 0;
+      border-top: 1px dashed var(--border-color);
+      padding-top: 12px;
+      color: #fff;
+    }
+
+    .receipt-val {
+      font-family: var(--font-display);
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="logo-container">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12C20,14.4 18.9,16.5 17.2,18H6.8C5.1,16.5 4,14.4 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12C6,13.8 6.8,15.4 8,16.5V14H16V16.5C17.2,15.4 18,13.8 18,12A6,6 0 0,0 12,6M10,8H14V10H10V8Z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-text">DIEGO'S</div>
+        <div class="logo-subtext">Motorcycle Parts & Accessories</div>
+      </div>
+    </div>
+    <div class="live-time" id="clock">Thursday, 7:00 PM</div>
+  </header>
+
+  <!-- Content -->
+  <main>
+    <!-- View 1: Welcome -->
+    <div class="view-welcome" id="view-welcome">
+      <h1 class="welcome-title">Diego's <span>Motorcycle POS</span></h1>
+      <p class="welcome-subtitle">Your trust is our gear. Quality parts, professional mechanics, and top-tier customer service.</p>
+      
+      <div class="promo-cards">
+        <div class="promo-card">
+          <div class="promo-icon">
+            <svg viewBox="0 0 24 24"><path d="M19,19H5V5H19M19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3M16.5,9.5L15,8L11,12L9,10L7.5,11.5L11,15L16.5,9.5Z"/></svg>
+          </div>
+          <div class="promo-title">Genuine Parts Only</div>
+          <div class="promo-desc">Stocking only 100% original, verified motorcycle parts, accessories, and quality service fluids.</div>
+        </div>
+        <div class="promo-card">
+          <div class="promo-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12A10 10 0 0 0 12 22A10 10 0 0 0 22 12A10 10 0 0 0 12 2M12 4A8 8 0 0 1 20 12C20 13.84 19.38 15.54 18.34 16.92L16.92 15.5C17.6 14.5 18 13.3 18 12C18 8.69 15.31 6 12 6A5.91 5.91 0 0 0 7.8 7.8L6.38 6.38C7.94 4.89 10.09 4 12 4M12 8A4 4 0 0 1 16 12C16 12.87 15.72 13.68 15.26 14.33L9.67 8.74C10.32 8.28 11.13 8 12 8Z"/></svg>
+          </div>
+          <div class="promo-title">Service & Labor Tuning</div>
+          <div class="promo-desc">Assigned expert mechanics available to install your parts and optimize your ride on the spot.</div>
+        </div>
+        <div class="promo-card">
+          <div class="promo-icon">
+            <svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,17A5,5 0 1,1 17,12A5,5 0 0,1 12,17M12,9A3,3 0 1,0 15,12A3,3 0 0,0 12,9Z"/></svg>
+          </div>
+          <div class="promo-title">Loyalty Benefits</div>
+          <div class="promo-desc">Register a profile with us to track your service history, earn loyalty points, and receive special offers.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- View 2: Active Transaction -->
+    <div class="view-transaction" id="view-transaction">
+      <!-- Left: Cart Items -->
+      <div class="col-items">
+        <div class="section-title">
+          <span>Items Selected</span>
+          <span id="cart-item-count" style="font-size: 0.95rem; color: var(--accent); font-weight: 600;">0 Items</span>
+        </div>
+        <div class="item-list-container" id="cart-list">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Right: Summary & Customer info -->
+      <div class="col-summary">
+        <div class="section-title">Summary</div>
+
+        <!-- Customer info if attached -->
+        <div class="customer-profile" id="cust-panel" style="display: none;">
+          <div class="customer-avatar" id="cust-avatar">AM</div>
+          <div class="customer-info">
+            <div class="customer-name" id="cust-name">Customer Name</div>
+            <div class="customer-vehicle" id="cust-vehicle">Yamaha NMAX 155</div>
+          </div>
+        </div>
+
+        <div class="summary-card">
+          <div class="summary-row">
+            <span>Subtotal</span>
+            <span id="subtotal">₱0.00</span>
+          </div>
+          <div class="summary-row" id="row-discount" style="display: none;">
+            <span>Discount Applied</span>
+            <span id="discount" style="color: var(--success); font-weight: 600;">-₱0.00</span>
+          </div>
+          <div class="summary-row total-row">
+            <span class="summary-total-label">Grand Total</span>
+            <span class="summary-total-value" id="total">₱0.00</span>
+          </div>
+        </div>
+
+        <!-- Payment inputs if checking out -->
+        <div class="payment-panel" id="payment-panel">
+          <div class="payment-title">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M12 20C7.6 20 4 16.4 4 12S7.6 4 12 4 20 7.6 20 12 16.4 20 12 20M13 11H16V13H13V16H11V13H8V11H11V8H13V11Z"/></svg>
+            <span>POS Checkout</span>
+          </div>
+          <div class="payment-row">
+            <span class="payment-label">Payment Method</span>
+            <span class="payment-value" id="payment-method" style="font-size: 1.15rem; color: #fff;">Cash</span>
+          </div>
+          <div class="payment-row" id="row-cash-received">
+            <span class="payment-label">Cash Received</span>
+            <span class="payment-value" id="cash-received">₱0.00</span>
+          </div>
+          <div class="payment-row" id="row-change-due">
+            <span class="payment-label">Change Due</span>
+            <span class="payment-value change" id="change-due">₱0.00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- View 3: Complete Overlay -->
+    <div class="receipt-overlay" id="receipt-overlay">
+      <div class="success-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z"/>
+        </svg>
+      </div>
+      <h2 class="receipt-title" id="receipt-title-text">Payment Completed!</h2>
+      <p class="receipt-message">Thank you for riding with Diego's Motorcycle Parts & Accessories. Safe travels!</p>
+
+      <div class="receipt-summary-box">
+        <div class="receipt-row">
+          <span>Transaction ID</span>
+          <span class="receipt-val" id="receipt-tx-id">TX-10001</span>
+        </div>
+        <div class="receipt-row">
+          <span>Amount Paid</span>
+          <span class="receipt-val" id="receipt-amount-paid">₱0.00</span>
+        </div>
+        <div class="receipt-row" id="receipt-row-tendered">
+          <span>Cash Tendered</span>
+          <span class="receipt-val" id="receipt-cash-received">₱0.00</span>
+        </div>
+        <div class="receipt-row" id="receipt-row-change">
+          <span>Change Returned</span>
+          <span class="receipt-val" style="color: var(--success); font-size: 1.25rem;" id="receipt-change-due">₱0.00</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Live Clock
+    function updateClock() {
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const now = new Date();
+      const day = days[now.getDay()];
+      const month = months[now.getMonth()];
+      const date = now.getDate();
+      let hours = now.getHours();
+      let minutes = now.getMinutes();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12; // the hour '0' should be '12'
+      minutes = minutes < 10 ? '0' + minutes : minutes;
+      const timeStr = `${day}, ${month} ${date} - ${hours}:${minutes} ${ampm}`;
+      document.getElementById('clock').textContent = timeStr;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // BroadcastChannel Listening
+    const channel = new BroadcastChannel('pos-customer-display');
+    let receiptTimeout = null;
+
+    channel.onmessage = (event) => {
+      const data = event.data;
+      console.log('Received Broadcast Data:', data);
+      
+      if (receiptTimeout) {
+        clearTimeout(receiptTimeout);
+        receiptTimeout = null;
+      }
+
+      const viewWelcome = document.getElementById('view-welcome');
+      const viewTransaction = document.getElementById('view-transaction');
+      const receiptOverlay = document.getElementById('receipt-overlay');
+
+      // 1. Handle Receipt Completion Screen
+      if (data.status === 'receipt') {
+        viewWelcome.classList.add('hidden');
+        viewTransaction.classList.remove('active');
+        receiptOverlay.classList.add('active');
+
+        document.getElementById('receipt-tx-id').textContent = data.transaction ? data.transaction.id : 'N/A';
+        document.getElementById('receipt-amount-paid').textContent = `₱${data.total.toFixed(2)}`;
+
+        if (data.transaction && data.transaction.paymentMethod === 'Cash') {
+          document.getElementById('receipt-row-tendered').style.display = 'flex';
+          document.getElementById('receipt-row-change').style.display = 'flex';
+          document.getElementById('receipt-cash-received').textContent = `₱${(data.cashReceived || data.total).toFixed(2)}`;
+          document.getElementById('receipt-change-due').textContent = `₱${(data.changeDue || 0).toFixed(2)}`;
+        } else {
+          document.getElementById('receipt-row-tendered').style.display = 'none';
+          document.getElementById('receipt-row-change').style.display = 'none';
+        }
+
+        // Return to welcome screen after 8 seconds
+        receiptTimeout = setTimeout(() => {
+          receiptOverlay.classList.remove('active');
+          viewWelcome.classList.remove('hidden');
+          viewTransaction.classList.remove('active');
+        }, 8000);
+
+        return;
+      }
+
+      // 2. Handle Welcome screen
+      if (data.status === 'welcome' || !data.items || data.items.length === 0) {
+        receiptOverlay.classList.remove('active');
+        viewWelcome.classList.remove('hidden');
+        viewTransaction.classList.remove('active');
+        return;
+      }
+
+      // 3. Handle Active Cart / Checkout
+      receiptOverlay.classList.remove('active');
+      viewWelcome.classList.add('hidden');
+      viewTransaction.classList.add('active');
+
+      // Populate Items list
+      const cartList = document.getElementById('cart-list');
+      cartList.innerHTML = '';
+      data.items.forEach(item => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'cart-item';
+        itemEl.innerHTML = `
+          <div class="item-details">
+            <span class="item-name">${item.name}</span>
+            <span class="item-sku">${item.sku}</span>
+            <div class="item-pricing">
+              <span>₱${item.price.toFixed(2)} each</span>
+              <span style="font-weight: 600; color: #fff;">Qty: ${item.quantity}</span>
+            </div>
+          </div>
+          <span class="item-total">₱${item.total.toFixed(2)}</span>
+        `;
+        cartList.appendChild(itemEl);
+      });
+
+      document.getElementById('cart-item-count').textContent = `${data.items.reduce((s,i)=>s+i.quantity, 0)} Item(s)`;
+
+      // Populate Customer Details
+      const custPanel = document.getElementById('cust-panel');
+      if (data.customer) {
+        custPanel.style.display = 'flex';
+        document.getElementById('cust-name').textContent = data.customer.name;
+        document.getElementById('cust-vehicle').textContent = data.customer.vehicle || 'No Vehicle';
+        
+        // Initials for avatar
+        const initials = data.customer.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        document.getElementById('cust-avatar').textContent = initials;
+      } else {
+        custPanel.style.display = 'none';
+      }
+
+      // Populate Summary Totals
+      document.getElementById('subtotal').textContent = `₱${data.subtotal.toFixed(2)}`;
+      
+      const rowDiscount = document.getElementById('row-discount');
+      if (data.discount > 0) {
+        rowDiscount.style.display = 'flex';
+        document.getElementById('discount').textContent = `-₱${data.discount.toFixed(2)}`;
+      } else {
+        rowDiscount.style.display = 'none';
+      }
+
+      document.getElementById('total').textContent = `₱${data.total.toFixed(2)}`;
+
+      // Populate Checkout Details if in checkout mode
+      const paymentPanel = document.getElementById('payment-panel');
+      if (data.status === 'checkout') {
+        paymentPanel.style.display = 'flex';
+        
+        const method = data.paymentMethod || document.querySelector('input[name="payment-method"]:checked')?.value || 'Cash';
+        document.getElementById('payment-method').textContent = method;
+
+        if (method === 'Cash') {
+          document.getElementById('row-cash-received').style.display = 'flex';
+          document.getElementById('row-change-due').style.display = 'flex';
+          document.getElementById('cash-received').textContent = `₱${(data.cashReceived || 0).toFixed(2)}`;
+          document.getElementById('change-due').textContent = `₱${(data.changeDue || 0).toFixed(2)}`;
+        } else {
+          document.getElementById('row-cash-received').style.display = 'none';
+          document.getElementById('row-change-due').style.display = 'none';
+        }
+      } else {
+        paymentPanel.style.display = 'none';
+      }
+    };
+  </script>
+</body>
+</html>

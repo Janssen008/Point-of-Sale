@@ -227,6 +227,7 @@ class ApexMotoPOS {
         if (radio) {
           radio.checked = true;
           this.toggleCashCalculator(radio.value);
+          this.broadcastToCustomerDisplay('checkout');
         }
       });
     });
@@ -886,6 +887,7 @@ class ApexMotoPOS {
 
     document.getElementById('cart-subtotal').textContent = `₱${subtotal.toFixed(2)}`;
     document.getElementById('cart-total').textContent = `₱${grandTotal.toFixed(2)}`;
+    this.broadcastToCustomerDisplay(this.cart.length > 0 ? 'cart-updating' : 'welcome');
   }
 
   // --- Service Board Kanban Renderer ---
@@ -1295,6 +1297,61 @@ class ApexMotoPOS {
 
   closeModal(modalId) {
     document.getElementById(modalId).classList.remove('active');
+  }
+
+  openCustomerDisplay() {
+    this.customerWindow = window.open('customer.html', 'customerDisplayWindow', 'width=1200,height=800,menubar=no,toolbar=no,location=no,status=no');
+    if (this.customerWindow) {
+      this.showToast("Customer 2nd Monitor Display Opened", "success");
+      setTimeout(() => {
+        this.broadcastToCustomerDisplay(this.cart.length > 0 ? 'cart-updating' : 'welcome');
+      }, 1000);
+    } else {
+      this.showToast("Pop-up blocker is preventing the 2nd monitor window from opening. Please allow popups.", "warning");
+    }
+  }
+
+  broadcastToCustomerDisplay(statusType, extraData = {}) {
+    if (!this.customerDisplayChannel) {
+      this.customerDisplayChannel = new BroadcastChannel('pos-customer-display');
+    }
+    
+    // Construct standard state payload
+    const cartItems = this.cart.map(item => {
+      const part = this.parts.find(p => p.id === item.partId);
+      return {
+        sku: part ? part.sku : '',
+        name: part ? part.name : 'Unknown Part',
+        price: part ? part.price : 0,
+        quantity: item.quantity,
+        total: part ? part.price * item.quantity : 0
+      };
+    });
+
+    const subtotal = this.cart.reduce((sum, item) => {
+      const p = this.parts.find(part => part.id === item.partId);
+      return sum + (p ? p.price * item.quantity : 0);
+    }, 0);
+
+    const discountInput = document.getElementById('cart-discount-input');
+    const discount = parseFloat(discountInput ? discountInput.value : 0) || 0;
+    const total = Math.max(0, subtotal - discount);
+
+    const payload = {
+      status: statusType, // 'welcome', 'cart-updating', 'checkout', 'receipt'
+      customer: this.selectedCustomer ? {
+        name: this.selectedCustomer.name,
+        vehicle: this.selectedCustomer.vehicles && this.selectedCustomer.vehicles[0] ? 
+                 `${this.selectedCustomer.vehicles[0].brand} ${this.selectedCustomer.vehicles[0].model}` : ''
+      } : null,
+      items: cartItems,
+      subtotal: subtotal,
+      discount: discount,
+      total: total,
+      ...extraData
+    };
+
+    this.customerDisplayChannel.postMessage(payload);
   }
 
   // --- BARCODE PRINTING ---
@@ -1980,6 +2037,7 @@ class ApexMotoPOS {
     if (cust) {
       this.selectedCustomer = cust;
       this.switchView('pos');
+      this.renderPOSCart();
       this.showToast(`Customer attached to order`, "success");
     }
   }
@@ -2052,6 +2110,7 @@ class ApexMotoPOS {
     this.toggleCashCalculator('Cash');
 
     this.openModal('modal-checkout');
+    this.broadcastToCustomerDisplay('checkout');
   }
 
   toggleCashCalculator(method) {
@@ -2062,11 +2121,14 @@ class ApexMotoPOS {
   }
 
   calculateCashChange() {
-    const totalVal = parseFloat(document.getElementById('checkout-total').textContent.replace('$', '')) || 0;
+    const rawTotal = document.getElementById('checkout-total').textContent;
+    const totalVal = parseFloat(rawTotal.replace(/[^0-9.-]+/g, '')) || 0;
     const cashRecVal = parseFloat(document.getElementById('cash-received').value) || 0;
     
     const change = Math.max(0, cashRecVal - totalVal);
     document.getElementById('cash-change-due').textContent = `₱${change.toFixed(2)}`;
+    
+    this.broadcastToCustomerDisplay('checkout', { cashReceived: cashRecVal, changeDue: change });
   }
 
   generateReceiptHTML(tx) {
@@ -2305,6 +2367,12 @@ class ApexMotoPOS {
     grid.innerHTML = '';
 
     const query = (document.getElementById('job-part-search')?.value || '').toLowerCase().trim();
+    if (!query) {
+      grid.style.display = 'none';
+      return;
+    }
+    grid.style.display = 'grid';
+
     const category = document.getElementById('job-part-category')?.value || 'All';
 
     let filtered = this.parts;
@@ -2762,6 +2830,11 @@ class ApexMotoPOS {
       
       this.generateReceiptHTML(transactionRecord);
       this.openModal('modal-receipt');
+      this.broadcastToCustomerDisplay('receipt', {
+        cashReceived: cashReceived,
+        changeDue: changeDue,
+        transaction: transactionRecord
+      });
       if (this.activeView === 'service') {
         this.renderServiceBoard();
       } else {
