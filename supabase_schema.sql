@@ -225,7 +225,42 @@ BEGIN
 END $$;
 
 -- =====================================================================
+-- TABLE: mechanics
+-- Store mechanics and their roles
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS mechanics (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        TEXT NOT NULL,
+  role        TEXT,
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- =====================================================================
+-- TABLE: labor_records
+-- Store individual labor items completed by a mechanic
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS labor_records (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  mechanic_id UUID NOT NULL REFERENCES mechanics(id) ON DELETE CASCADE,
+  description TEXT NOT NULL,
+  amount      NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+  date        DATE DEFAULT CURRENT_DATE,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- =====================================================================
+-- ROW LEVEL SECURITY FOR MECHANICS
+-- =====================================================================
+ALTER TABLE mechanics         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE labor_records     ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "anon_all_mechanics"         ON mechanics         FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "anon_all_labor_records"     ON labor_records     FOR ALL TO anon USING (true) WITH CHECK (true);
+
+-- =====================================================================
 -- All done!
 -- Tables: parts, customers, vehicles, service_jobs,
---         service_job_parts, transactions, transaction_items
+--         service_job_parts, transactions, transaction_items,
+--         mechanics, labor_records
 -- =====================================================================
