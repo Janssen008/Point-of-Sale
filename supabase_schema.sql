@@ -28,12 +28,13 @@ CREATE TABLE IF NOT EXISTS parts (
 -- Customer CRM profiles
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS customers (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name        TEXT NOT NULL,
-  phone       TEXT NOT NULL,
-  email       TEXT,
-  created_at  TIMESTAMPTZ DEFAULT NOW(),
-  updated_at  TIMESTAMPTZ DEFAULT NOW()
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name             TEXT NOT NULL,
+  phone            TEXT NOT NULL,
+  email            TEXT,
+  outstanding_debt NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+  created_at       TIMESTAMPTZ DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- =====================================================================
@@ -99,7 +100,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   discount       NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
   total          NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
   payment_method TEXT NOT NULL DEFAULT 'Cash'
-                 CHECK (payment_method IN ('Cash', 'Card', 'Wallet')),
+                 CHECK (payment_method IN ('Cash', 'Card', 'Wallet', 'Debt')),
   date           TIMESTAMPTZ DEFAULT NOW()
 );
 

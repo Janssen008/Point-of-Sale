@@ -104,6 +104,7 @@ const DB = {
       name:     c.name,
       phone:    c.phone,
       email:    c.email || '',
+      debt:     parseFloat(c.outstanding_debt || 0),
       vehicles: vehicles
         .filter(v => v.customer_id === c.id)
         .map(v => ({
@@ -119,9 +120,10 @@ const DB = {
 
   async upsertCustomer(customer) {
     const row = {
-      name:  customer.name,
-      phone: customer.phone,
-      email: customer.email || null,
+      name:             customer.name,
+      phone:            customer.phone,
+      email:            customer.email || null,
+      outstanding_debt: customer.debt  || 0,
     };
     if (customer.id && customer.id.includes('-') && customer.id.length > 10) {
       row.id = customer.id;

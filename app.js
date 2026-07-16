@@ -995,7 +995,10 @@ class ApexMotoPOS {
           <span>${cust.name}</span>
           <span style="font-size:0.75rem; color:var(--text-muted);">${cust.vehicles.length} Vehicle(s)</span>
         </div>
-        <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">${cust.phone}</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+          <div style="font-size:0.75rem; color:var(--text-secondary);">${cust.phone}</div>
+          ${cust.debt > 0 ? `<div style="font-size:0.75rem; font-weight:700; color:var(--danger);">Debt: ₱${cust.debt.toFixed(2)}</div>` : ''}
+        </div>
         <div style="font-size:0.75rem; color:var(--accent); font-weight:500; margin-top:2px;">${primaryVehicle}</div>
       `;
       div.addEventListener('click', () => {
@@ -1095,18 +1098,50 @@ class ApexMotoPOS {
       // Past receipts
       customerTx.forEach(tx => {
         const itemsSummary = tx.items.map(it => `${it.quantity}x ${it.name.split(' ')[0]}`).join(', ');
+        const isDebt = tx.paymentMethod === 'Debt';
+        const typeBadge = `<span class="badge ${tx.type === 'Service' ? 'badge-info' : 'badge-secondary'}">${tx.type}</span>`;
+        const pmtBadge = isDebt ? `<span class="badge badge-danger" style="margin-left:4px;">Debt</span>` : '';
+        
         txHistoryHtml += `
           <tr>
             <td><strong>${tx.id}</strong></td>
             <td>${new Date(tx.date).toLocaleDateString()}</td>
-            <td><span class="badge ${tx.type === 'Service' ? 'badge-info' : 'badge-secondary'}">${tx.type}</span></td>
+            <td>${typeBadge}${pmtBadge}</td>
             <td style="font-size:0.8rem; color:var(--text-secondary); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${itemsSummary}">${itemsSummary}</td>
-            <td style="text-align:right; font-weight:700; color:var(--success)">₱${tx.total.toFixed(2)}</td>
+            <td style="text-align:right; font-weight:700; color:${isDebt ? 'var(--danger)' : 'var(--success)'}">₱${tx.total.toFixed(2)}</td>
           </tr>
         `;
       });
 
       txHistoryHtml += `</tbody></table></div>`;
+    }
+
+    // Debt Breakdown Section
+    const debtTx = customerTx.filter(t => t.paymentMethod === 'Debt');
+    let debtHtml = '';
+    if (debtTx.length > 0) {
+      const totalDebtAcquired = debtTx.reduce((sum, tx) => sum + tx.total, 0);
+      debtHtml = `
+        <div style="margin-bottom:24px; padding: 16px; background-color: rgba(255, 69, 58, 0.05); border: 1px solid rgba(255, 69, 58, 0.3); border-radius: var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 style="font-family:var(--font-display); font-size:1.1rem; margin:0; color: var(--danger);">Items Acquired on Debt (Utang)</h3>
+            <div style="font-weight:700; color:var(--danger);">Total Value: ₱${totalDebtAcquired.toFixed(2)}</div>
+          </div>
+          <ul style="list-style: none; padding: 0; margin: 0;">
+      `;
+      debtTx.forEach(tx => {
+        debtHtml += `<li style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed rgba(255, 255, 255, 0.1);">
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <strong>${new Date(tx.date).toLocaleDateString()} (Invoice: ${tx.id})</strong>
+            <strong style="color:var(--danger)">₱${tx.total.toFixed(2)}</strong>
+          </div>
+          <div style="color: var(--text-secondary); font-size: 0.85rem; padding-left: 8px; border-left: 2px solid rgba(255, 69, 58, 0.4);">`;
+        tx.items.forEach(it => {
+          debtHtml += `<div>${it.quantity}x ${it.name} <span style="opacity:0.7">— ₱${(it.price * it.quantity).toFixed(2)}</span></div>`;
+        });
+        debtHtml += `</div></li>`;
+      });
+      debtHtml += `</ul></div>`;
     }
 
     detailEl.innerHTML = `
@@ -1116,6 +1151,7 @@ class ApexMotoPOS {
           <div style="font-size:0.85rem; color:var(--text-secondary); margin-top:4px;">
             Phone: ${cust.phone} | Email: ${cust.email || 'No email provided'}
           </div>
+          ${cust.debt > 0 ? `<div style="margin-top: 8px; font-weight: 600; color: var(--danger);">Outstanding Debt: ₱${cust.debt.toFixed(2)}</div>` : ''}
         </div>
         <div style="text-align:right;">
           <div style="font-size:0.8rem; color:var(--text-secondary);">Total Value</div>
@@ -1162,6 +1198,8 @@ class ApexMotoPOS {
           </div>
         </div>
       </div>
+
+      ${debtHtml}
 
       <div>
         <h3 style="font-family:var(--font-display); font-size:1.1rem; margin-bottom:10px;">Transaction & Work Order History</h3>
@@ -1304,13 +1342,14 @@ class ApexMotoPOS {
     const name = document.getElementById('cust-name').value.trim();
     const phone = document.getElementById('cust-phone').value.trim();
     const email = document.getElementById('cust-email').value.trim();
+    const debt  = parseFloat(document.getElementById('cust-debt')?.value) || 0;
     
-    // Bike details
-    const bYear = document.getElementById('bike-year').value.trim();
-    const bMake = document.getElementById('bike-make').value.trim();
-    const bModel = document.getElementById('bike-model').value.trim();
-    const bPlate = document.getElementById('bike-plate').value.trim();
-    const bVin = document.getElementById('bike-vin').value.trim();
+    // Bike details (optional fields)
+    const bYear  = document.getElementById('bike-year')?.value.trim()  || '';
+    const bMake  = document.getElementById('bike-make')?.value.trim()  || '';
+    const bModel = document.getElementById('bike-model')?.value.trim() || '';
+    const bPlate = document.getElementById('bike-plate')?.value.trim() || '';
+    const bVin   = document.getElementById('bike-vin')?.value.trim()   || '';
 
     if (!name || !phone) {
       this.showToast("Full Name and Phone Number are required", "warning");
@@ -1333,7 +1372,7 @@ class ApexMotoPOS {
       if (custIndex !== -1) {
         const oldVehicles = this.customers[custIndex].vehicles || [];
         const mergedVehicles = bikes.length > 0 ? bikes : oldVehicles;
-        const updatedCust = { id: this.editingCustomerId, name, phone, email, vehicles: mergedVehicles };
+        const updatedCust = { id: this.editingCustomerId, name, phone, email, debt, vehicles: mergedVehicles };
         try {
           await DB.upsertCustomer(updatedCust);
           this.customers[custIndex] = updatedCust;
@@ -1343,7 +1382,7 @@ class ApexMotoPOS {
         }
       }
     } else {
-      const tempCust = { name, phone, email, vehicles: bikes };
+      const tempCust = { name, phone, email, debt, vehicles: bikes };
       try {
         const newId = await DB.upsertCustomer(tempCust);
         // If a vehicle was provided, register it
@@ -1352,7 +1391,7 @@ class ApexMotoPOS {
           await DB.addVehicle(newId, bikes[0]);
           vehicleData = [{ ...bikes[0] }];
         }
-        const newCust = { id: newId, name, phone, email, vehicles: vehicleData };
+        const newCust = { id: newId, name, phone, email, debt, vehicles: vehicleData };
         this.customers.push(newCust);
         this.showToast(`Registered Customer: ${name}`, "success");
         if (this.activeView === 'pos') {
@@ -2121,7 +2160,8 @@ class ApexMotoPOS {
 
   // Handle both retail and service checkouts in one unified pay call
   async completeTransaction() {
-    const totalVal = parseFloat(document.getElementById('checkout-total').textContent.replace('$', '')) || 0;
+    const rawTotal = document.getElementById('checkout-total').textContent;
+    const totalVal = parseFloat(rawTotal.replace(/[^0-9.-]+/g, '')) || 0;
     const paymentMethod = document.querySelector('input[name="payment-method"]:checked').value;
 
     if (paymentMethod === 'Cash') {
@@ -2130,6 +2170,11 @@ class ApexMotoPOS {
         this.showToast("Cash received must cover invoice amount!", "warning");
         return;
       }
+    }
+
+    if (paymentMethod === 'Debt' && !this.selectedCustomer) {
+      this.showToast("A customer must be attached to the order to use Debt/Utang!", "warning");
+      return;
     }
 
     const checkoutMechanicId = document.getElementById('checkout-mechanic').value;
@@ -2241,7 +2286,15 @@ class ApexMotoPOS {
     }
 
     try {
-      await Promise.all([...stockUpdates, DB.createTransaction(transactionRecord)]);
+      const promises = [...stockUpdates, DB.createTransaction(transactionRecord)];
+      
+      // Update customer debt if payment method is Debt
+      if (paymentMethod === 'Debt' && this.selectedCustomer) {
+        this.selectedCustomer.debt = (this.selectedCustomer.debt || 0) + totalVal;
+        promises.push(DB.upsertCustomer(this.selectedCustomer));
+      }
+
+      await Promise.all(promises);
       this.transactions.push(transactionRecord);
 
       // Reset checkout states
