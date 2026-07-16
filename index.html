@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ApexMoto POS - Motorcycle Shop & Parts Point of Sale</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-icon">
+        <!-- SVG motorcycle helmet / shield icon -->
+        <svg viewBox="0 0 24 24">
+          <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12C20,14.4 18.9,16.5 17.2,18H6.8C5.1,16.5 4,14.4 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12C6,13.8 6.8,15.4 8,16.5V14H16V16.5C17.2,15.4 18,13.8 18,12A6,6 0 0,0 12,6M10,8H14V10H10V8Z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-text">APEX<span>MOTO</span></div>
+        <div class="logo-subtext">Parts & Service</div>
+      </div>
+    </div>
+    
+    <ul class="sidebar-menu">
+      <li class="menu-item active" data-view="dashboard">
+        <button>
+          <svg viewBox="0 0 24 24"><path d="M13,3V9H21V3H13M13,21H21V11H13V21M3,21H11V15H3V21M3,13H11V3H3V13Z"/></svg>
+          Dashboard
+        </button>
+      </li>
+      <li class="menu-item" data-view="pos">
+        <button>
+          <svg viewBox="0 0 24 24"><path d="M17.25,18A1.25,1.25 0 1,1 16,19.25A1.24,1.24 0 0,1 17.25,18M7.25,18A1.25,1.25 0 1,1 6,19.25A1.24,1.24 0 0,1 7.25,18M3,3H4.75L7.25,14.25H18.25L21,5.25H6.25M17.25,16.25H7.25L6,14.25H18.25Z"/></svg>
+          Point of Sale
+        </button>
+      </li>
+      <li class="menu-item" data-view="service">
+        <button>
+          <svg viewBox="0 0 24 24"><path d="M22.7,19L20.4,21.3C20,21.7 19.3,21.7 18.9,21.3L15.4,17.8L12.9,20.3L10.4,17.8L15.4,12.8C15.8,12.4 16.5,12.4 16.9,12.8L19.2,15.1C19.6,15.5 19.6,16.2 19.2,16.6L17.8,18L21.3,21.5C21.7,21.9 21.7,22.6 21.3,23L22.7,19M19.1,7.7C20.6,8.5 21.7,10 22,11.8C20.8,11.3 19.5,11 18.1,11C13.6,11 10,14.6 10,19C10,19.7 10.1,20.4 10.3,21C8.2,20.8 6.4,19.7 5.2,18.1L12.2,11.1L9.4,8.3L2,15.7V2H6.5L10.3,5.8L15.3,2H19.1V7.7M16.5,4A1.5,1.5 0 1,0 15,5.5A1.5,1.5 0 0,0 16.5,4Z"/></svg>
+          Service Tracker
+        </button>
+      </li>
+      <li class="menu-item" data-view="inventory">
+        <button>
+          <svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12C20,12.5 19.9,13.1 19.8,13.6L16.2,10H14V7.8L12.4,6.2C12.3,6.1 12.1,6 12,6A8,8 0 0,1 12,4M8.2,9L12,12.8L12.8,12L9,8.2C8.6,8.4 8.4,8.6 8.2,9M5.8,12H8V14.2L9.6,15.8C9.7,15.9 9.9,16 10,16C10.5,16 11,15.5 11,15L11,12.8L13.8,10H16.2L19.4,13.2C18.9,16.5 16.2,19.1 12.8,19.6L10,16.8V14.6L8.4,13C8.3,12.9 8.1,12.8 8,12.8A8,8 0 0,1 5.8,12Z"/></svg>
+          Parts Inventory
+        </button>
+      </li>
+      <li class="menu-item" data-view="customers">
+        <button>
+          <svg viewBox="0 0 24 24"><path d="M16 17C17.7 17 21 17.9 21 19.5V21H11V19.5C11 17.9 14.3 17 16 17M16 8C18.2 8 20 9.8 20 12S18.2 16 16 16 12 14.2 12 12 13.8 8 16 8M9 17V19.5C9 20 9.3 20.6 9.8 20.9C8.6 21 7.3 21 6 21V19.5C6 17.9 9.3 17 11 17C10.2 17 9.5 17 9 17M6 8C8.2 8 10 9.8 10 12S8.2 16 6 16 2 14.2 2 12 3.8 8 6 8Z"/></svg>
+          Customers (Debt)
+        </button>
+      </li>
+      <li class="menu-item" data-view="mechanics">
+        <button>
+          <svg viewBox="0 0 24 24"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>
+          Mechanics (Labor)
+        </button>
+      </li>
+    </ul>
+    
+    <div class="sidebar-footer">
+      <div>ApexMoto v2.6.4</div>
+      <div>Local Time: 10:06 AM</div>
+    </div>
+  </aside>
+
+  <!-- Main Content Wrapper -->
+  <div class="main-wrapper">
+    <!-- Header -->
+    <header>
+      <div class="header-title">
+        <h1 id="page-title">Dashboard Overview</h1>
+      </div>
+      <div class="header-right">
+        <div class="current-time" id="live-clock">2026-07-15 10:06:20</div>
+        <div class="user-profile">
+          <div class="user-avatar">PM</div>
+          <span style="font-size: 0.9rem; font-weight: 500;">Pew Miller</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content View Panels -->
+    <main class="content-area">
+
+      <!-- ================= DASHBOARD VIEW ================= -->
+      <section id="view-dashboard" class="view-panel active">
+        <div class="grid-cols-4">
+          <!-- Metric 1: Parts/Retail Sales -->
+          <div class="card stat-card card-accent">
+            <div class="stat-info">
+              <div class="stat-label">Sales Income (Today)</div>
+              <div class="stat-value" id="dash-today-sales">₱0.00</div>
+              <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;" id="dash-sales-breakdown">Parts sales only</div>
+            </div>
+            <div class="stat-icon">
+              <svg viewBox="0 0 24 24" width="24" height="24"><path d="M5,4V7H10.5V19H13.5V7H19V4H5Z"/></svg>
+            </div>
+          </div>
+          <!-- Metric 2: Labor Income -->
+          <div class="card stat-card card-success">
+            <div class="stat-info">
+              <div class="stat-label">Labor Income (Today)</div>
+              <div class="stat-value" id="dash-today-labor">₱0.00</div>
+              <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;" id="dash-labor-breakdown">Service labor charges</div>
+            </div>
+            <div class="stat-icon">
+              <svg viewBox="0 0 24 24" width="24" height="24"><path d="M13.5,8H12V13L16.28,15.54L17,14.33L13.5,12.25V8M13,3A9,9 0 0,0 4,12H1L4.96,16.03L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.21 8.06,16.94L6.64,18.36C8.27,19.99 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3"/></svg>
+            </div>
+          </div>
+          <!-- Metric 3: Total Income -->
+          <div class="card stat-card" style="border: 1px solid rgba(255,95,31,0.4); background: linear-gradient(135deg, rgba(255,95,31,0.08), transparent);">
+            <div class="stat-info">
+              <div class="stat-label" style="color: var(--accent); font-weight: 700;">Total Income (Today)</div>
+              <div class="stat-value" id="dash-today-total" style="color: var(--accent);">₱0.00</div>
+              <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;" id="dash-total-txcount">0 transactions</div>
+            </div>
+            <div class="stat-icon">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+            </div>
+          </div>
+          <!-- Metric 4: Active Jobs -->
+          <div class="card stat-card card-warning">
+            <div class="stat-info">
+              <div class="stat-label">Active Jobs</div>
+              <div class="stat-value" id="dash-active-jobs">0</div>
+              <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;" id="dash-low-stock-info">0 low stock items</div>
+            </div>
+            <div class="stat-icon">
+              <svg viewBox="0 0 24 24" width="24" height="24"><path d="M19,19H5V5H19M19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3M16.5,9.5L15,8L11,12L9,10L7.5,11.5L11,15L16.5,9.5Z"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-cols-3" style="grid-template-columns: 2fr 1fr 1fr;">
+          <!-- Sales Progress Chart -->
+          <div class="card">
+            <div class="card-title">
+              <span>Weekly Sales Performance</span>
+              <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-secondary);">Last 7 Days</span>
+            </div>
+            <div style="height: 250px; display: flex; align-items: flex-end; justify-content: space-between; padding-top: 20px;" id="weekly-chart-container">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </div>
+
+          <!-- Recent Transactions -->
+          <div class="card">
+            <div class="card-title">Recent Transactions</div>
+            <div class="recent-sales-list" id="dash-recent-sales">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Alert Center -->
+          <div class="card">
+            <div class="card-title">System Status & Alerts</div>
+            <div style="display: flex; flex-direction: column; gap: 12px;" id="dash-alerts-container">
+              <!-- Dynamically populated warnings -->
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span>Quick Service Queue Overview</span>
+            <button class="btn btn-secondary btn-sm" onclick="app.switchView('service')">View Work Orders</button>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Job ID</th>
+                  <th>Customer</th>
+                  <th>Vehicle</th>
+                  <th>Assigned Mechanic</th>
+                  <th>Status</th>
+                  <th>Total Cost</th>
+                </tr>
+              </thead>
+              <tbody id="dash-service-table">
+                <!-- Seeded content -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= POINT OF SALE (POS) VIEW ================= -->
+      <section id="view-pos" class="view-panel">
+        <div class="grid-pos">
+          <!-- LEFT: Product Catalog Panel -->
+          <div class="pos-catalog-container" id="pos-catalog-container">
+            <!-- Scanner / Quick Search Bar -->
+            <div class="pos-scanner-bar">
+              <div class="scanner-input-wrapper">
+                <svg class="scanner-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M4,6H6V18H4V6M7,6H8V18H7V6M9,6H12V18H9V6M13,6H14V18H13V6M16,6H18V18H16V6M19,6H20V18H19V6M2,4V8H0V4A2,2 0 0,1 2,2H6V4H2M22,2A2,2 0 0,1 24,4V8H22V4H18V2H22M2,16V20H6V22H2A2,2 0 0,1 0,20V16H2M22,20V16H24V20A2,2 0 0,1 22,22H18V20H22Z"/></svg>
+                <input type="text" class="input-control" id="pos-search-input" placeholder="Scan barcode or search by name, SKU, brand...">
+              </div>
+              <button class="btn btn-secondary" id="pos-search-clear">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
+              </button>
+            </div>
+
+            <!-- Action Toolbar -->
+            <div class="pos-toolbar">
+              <div class="pos-toolbar-left">
+                <button class="btn btn-secondary btn-sm" id="btn-hold-order">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M19,21H5V9H19M12,2A3,3 0 0,0 9,5V7H5A2,2 0 0,0 3,9V21A2,2 0 0,0 5,23H19A2,2 0 0,0 21,21V9A2,2 0 0,0 19,7H15V5A3,3 0 0,0 12,2M12,4A1,1 0 0,1 13,5V7H11V5A1,1 0 0,1 12,4Z"/></svg>
+                  Hold
+                </button>
+                <button class="btn btn-secondary btn-sm" id="btn-recall-order" style="display: none;">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M2,12A10,10 0 1,0 12,2A10,10 0 0,0 2,12M15.6,13.7L14.7,14.6L11.5,11.5V7H12.8V11L15.6,13.7Z"/></svg>
+                  Recall (<span id="hold-time"></span>)
+                </button>
+              </div>
+              <div class="pos-toolbar-right">
+                <button class="btn btn-secondary btn-sm" onclick="app.openSelectCustomerModal()">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>
+                  Customer
+                </button>
+              </div>
+            </div>
+            
+            <!-- Category Tabs -->
+            <div class="catalog-tabs" id="pos-category-tabs">
+              <!-- Category filters dynamically populated -->
+            </div>
+            
+            <!-- Product Grid -->
+            <div class="pos-catalog-grid" id="pos-catalog-grid">
+              <!-- Parts catalog dynamically populated -->
+            </div>
+          </div>
+
+          <!-- RIGHT: Checkout Cart Panel -->
+          <div class="pos-cart-panel">
+            <div class="cart-header">
+              <div class="cart-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.25,18A1.25,1.25 0 1,1 16,19.25A1.24,1.24 0 0,1 17.25,18M7.25,18A1.25,1.25 0 1,1 6,19.25A1.24,1.24 0 0,1 7.25,18M3,3H4.75L7.25,14.25H18.25L21,5.25H6.25M17.25,16.25H7.25L6,14.25H18.25Z"/></svg>
+                Current Sale
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="cart-count-badge" id="cart-count">0 Items</span>
+                <button class="btn btn-primary btn-sm" onclick="app.openItemSearchModal()" title="Quick search & add">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Customer attachment area -->
+            <div class="cart-customer-selector">
+              <div id="cart-no-customer" style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="walkin-label">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="opacity: 0.5;"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>
+                  <span>Walk-in Transaction</span>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="app.openSelectCustomerModal()">Attach</button>
+              </div>
+              <div id="cart-has-customer" style="display: none;" class="selected-customer-info">
+                <div style="flex-grow: 1;">
+                  <div style="font-weight: 600;" id="cart-customer-name">Alex Mercer</div>
+                  <div style="font-size: 0.75rem; color: var(--text-secondary);" id="cart-customer-vehicle">Yamaha MT-07</div>
+                  <div class="loyalty-badge" id="cart-customer-loyalty" style="margin-top: 4px; font-size: 0.75rem; color: var(--success); font-weight: 700; display: none;">★ Loyalty Customer</div>
+                </div>
+                <button class="btn btn-danger btn-sm btn-icon-only" onclick="app.detachCustomerFromCart()" title="Detach Customer">×</button>
+              </div>
+            </div>
+
+            <!-- Items -->
+            <div class="cart-items-list" id="cart-items-container">
+              <!-- Cart items rendering -->
+            </div>
+
+            <!-- Cart pricing summary & Actions -->
+            <div class="cart-summary">
+              <div class="summary-row">
+                <span>Subtotal</span>
+                <span id="cart-subtotal">₱0.00</span>
+              </div>
+              <div class="summary-row" style="align-items: center;">
+                <span>Discount (₱)</span>
+                <input type="number" class="input-control" id="cart-discount-input" value="0.00" step="1" min="0" style="width: 80px; padding: 4px 8px; text-align: right; font-size: 0.85rem;">
+              </div>
+              <div class="summary-row total-row">
+                <span>Grand Total</span>
+                <span id="cart-total">₱0.00</span>
+              </div>
+              
+              <div class="cart-actions">
+                <button class="btn btn-secondary" onclick="app.clearCart()">Clear Order</button>
+                <button class="btn btn-primary" onclick="app.openCheckoutModal()">Pay & Invoice</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SERVICE / WORK ORDERS VIEW ================= -->
+      <section id="view-service" class="view-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <input type="text" class="input-control" id="service-search-input" placeholder="Search by customer name or vehicle plate..." style="width: 320px;">
+            <button class="btn btn-secondary" id="service-search-clear">Clear</button>
+          </div>
+          <button class="btn btn-primary" onclick="app.openCheckInModal()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+            Check-In Motorcycle
+          </button>
+        </div>
+
+        <!-- Kanban Status Board -->
+        <div class="status-board">
+          <!-- Draft Column -->
+          <div class="status-column" data-status="Draft">
+            <div class="status-column-header">
+              <span class="status-column-title">Draft / Checked-In</span>
+              <span class="status-column-count" id="count-Draft">0</span>
+            </div>
+            <div class="jobs-list" id="list-Draft"></div>
+          </div>
+
+          <!-- Pending Parts Column -->
+          <div class="status-column" data-status="Pending Parts">
+            <div class="status-column-header">
+              <span class="status-column-title">Pending Parts</span>
+              <span class="status-column-count" id="count-Pending-Parts">0</span>
+            </div>
+            <div class="jobs-list" id="list-Pending-Parts"></div>
+          </div>
+
+          <!-- In Progress Column -->
+          <div class="status-column" data-status="In Progress">
+            <div class="status-column-header">
+              <span class="status-column-title">In Progress</span>
+              <span class="status-column-count" id="count-In-Progress">0</span>
+            </div>
+            <div class="jobs-list" id="list-In-Progress"></div>
+          </div>
+
+          <!-- Testing Column -->
+          <div class="status-column" data-status="Testing">
+            <div class="status-column-header">
+              <span class="status-column-title">Final Testing</span>
+              <span class="status-column-count" id="count-Testing">0</span>
+            </div>
+            <div class="jobs-list" id="list-Testing"></div>
+          </div>
+
+          <!-- Ready for Pickup Column -->
+          <div class="status-column" data-status="Ready">
+            <div class="status-column-header">
+              <span class="status-column-title">Ready / Paid</span>
+              <span class="status-column-count" id="count-Ready">0</span>
+            </div>
+            <div class="jobs-list" id="list-Ready"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= PARTS INVENTORY VIEW ================= -->
+      <section id="view-inventory" class="view-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; gap: 12px; align-items: center; width: 60%;">
+            <input type="text" class="input-control" id="inv-search-input" placeholder="Filter inventory by part name, SKU, category..." style="flex-grow: 1;">
+            <select class="input-control" id="inv-category-filter" style="width: 180px;">
+              <option value="All">All Categories</option>
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="app.openPartModal(null)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+            Add New Part
+          </button>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Part Description</th>
+                <th>Category</th>
+                <th style="text-align: right;">Cost Price</th>
+                <th style="text-align: right;">Selling Price</th>
+                <th style="text-align: right;">Markup</th>
+                <th style="text-align: center;">Stock Level</th>
+                <th style="text-align: center;">Reorder Alert</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="inventory-table-body">
+              <!-- Render parts here -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ================= CUSTOMERS CRM VIEW ================= -->
+      <section id="view-customers" class="view-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <input type="text" class="input-control" id="cust-search-input" placeholder="Search customer records by name, email, plate..." style="width: 320px;">
+          <button class="btn btn-primary" onclick="app.openCustomerModal()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+            Add New Customer
+          </button>
+        </div>
+
+        <div class="customer-detail-grid">
+          <!-- Customer List Table Card -->
+          <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 200px); overflow-y: auto;">
+            <div class="card-title">Customer List</div>
+            <div id="crm-customer-list" style="display: flex; flex-direction: column; gap: 8px;">
+              <!-- Customer items -->
+            </div>
+          </div>
+
+          <!-- Customer Detail Pane -->
+          <div class="card" id="crm-detail-pane" style="max-height: calc(100vh - 200px); overflow-y: auto;">
+            <div id="crm-empty-state" style="text-align: center; padding: 60px 20px; color: var(--text-secondary);">
+              <svg width="60" height="60" viewBox="0 0 24 24" fill="currentColor" style="opacity: 0.3; margin-bottom: 12px;"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>
+              <h3>No Customer Selected</h3>
+              <p style="font-size: 0.85rem; margin-top: 6px;">Select a customer from the left panel to review debt balances and purchase history.</p>
+            </div>
+            
+            <div id="crm-detail-content" style="display: none;">
+              <!-- Profile details dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= MECHANICS VIEW ================= -->
+      <section id="view-mechanics" class="view-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <h2 style="font-size: 1.8rem; margin: 0;">Mechanics & Labor</h2>
+          <div style="display: flex; gap: 12px;">
+            <button class="btn btn-secondary" onclick="app.openLaborModal()">Record Labor</button>
+            <button class="btn btn-primary" onclick="app.openMechanicModal()">+ Add New Mechanic</button>
+          </div>
+        </div>
+
+        <div id="mechanic-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px;">
+          <!-- Populated via JS -->
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Keyboard Shortcut Bar -->
+    <div class="shortcut-legend-bar">
+      <div class="shortcut-item"><span class="key-badge">F1</span> Dashboard</div>
+      <div class="shortcut-item"><span class="key-badge">F2</span> POS Cart</div>
+      <div class="shortcut-item"><span class="key-badge">F3</span> Service Board</div>
+      <div class="shortcut-item"><span class="key-badge">F4</span> Parts Inventory</div>
+      <div class="shortcut-item"><span class="key-badge">F6</span> Customers CRM</div>
+      <div class="shortcut-item"><span class="key-badge">F9</span> Pay / Invoice</div>
+      <div class="shortcut-item"><span class="key-badge">F10</span> Discard Order</div>
+      <div class="shortcut-item"><span class="key-badge">F12</span> Print Receipt</div>
+    </div>
+  </div>
+
+  <!-- ======================================================= -->
+  <!-- ==================== DIALOGS & MODALS ================== -->
+  <!-- ======================================================= -->
+
+  <!-- Item Search Modal (POS Add Item) -->
+  <div class="modal-overlay" id="modal-item-search">
+    <div class="modal-container" style="max-width: 720px; width: 95%;">
+      <div class="modal-header">
+        <h3 class="modal-title">Add Item to Order</h3>
+        <button class="modal-close" onclick="app.closeModal('modal-item-search')">×</button>
+      </div>
+      <div class="modal-body" style="padding-bottom: 0;">
+
+        <!-- Search Row -->
+        <div style="display: flex; gap: 10px; margin-bottom: 14px;">
+          <div style="position: relative; flex-grow: 1;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:0.4;pointer-events:none;"><path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/></svg>
+            <input type="text" class="input-control" id="item-search-input" placeholder="Search by name or SKU..." style="padding-left: 36px;" oninput="app.renderItemSearchResults()">
+          </div>
+          <select class="input-control" id="item-search-category" style="width: 180px;" onchange="app.renderItemSearchResults()">
+            <option value="All">All Categories</option>
+          </select>
+        </div>
+
+        <!-- Results Grid -->
+        <div id="item-search-results" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; max-height: 380px; overflow-y: auto; padding-bottom: 16px;">
+          <!-- Populated via JS -->
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Part Modal -->
+  <div class="modal-overlay" id="modal-part">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title" id="part-modal-title">Add Part Record</h3>
+        <button class="modal-close" onclick="app.closeModal('modal-part')">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-part">
+          <input type="hidden" id="part-id">
+          <div class="grid-cols-2">
+            <div class="form-group">
+              <label for="part-sku">SKU Code *</label>
+              <input type="text" class="input-control" id="part-sku" required placeholder="e.g. TYR-PIR-DR4">
+            </div>
+            <div class="form-group">
+              <label for="part-category">Category *</label>
+              <input type="text" class="input-control" id="part-category" required placeholder="e.g. Tires, Brakes" list="categories-list">
+              <datalist id="categories-list">
+                <option value="Tires">
+                <option value="Brakes">
+                <option value="Fluids">
+                <option value="Filters">
+                <option value="Drivetrain">
+                <option value="Electrical">
+                <option value="Accessories">
+              </datalist>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="part-name">Part Name / Description *</label>
+            <input type="text" class="input-control" id="part-name" required placeholder="e.g. Brembo Sintered Brake Pads Rear">
+          </div>
+          <div class="grid-cols-4">
+            <div class="form-group">
+              <label for="part-cost">Cost Price (₱) *</label>
+              <input type="number" class="input-control" id="part-cost" required step="0.01" min="0">
+            </div>
+            <div class="form-group">
+              <label for="part-price">Sell Price (₱) *</label>
+              <input type="number" class="input-control" id="part-price" required step="0.01" min="0">
+            </div>
+            <div class="form-group">
+              <label for="part-stock">Stock Qty *</label>
+              <input type="number" class="input-control" id="part-stock" required min="0">
+            </div>
+            <div class="form-group">
+              <label for="part-min-stock">Min Reorder *</label>
+              <input type="number" class="input-control" id="part-min-stock" required min="0" value="2">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="app.closeModal('modal-part')">Cancel</button>
+        <button class="btn btn-primary" id="btn-save-part">Save Part</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Customer Modal -->
+  <div class="modal-overlay" id="modal-customer">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title" id="customer-modal-title">New Customer Profile</h3>
+        <button class="modal-close" onclick="app.closeModal('modal-customer')">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-customer">
+          <input type="hidden" id="cust-id">
+          <div class="form-group">
+            <label for="cust-name">Full Name *</label>
+            <input type="text" class="input-control" id="cust-name" required placeholder="John Doe">
+          </div>
+          <div class="grid-cols-2">
+            <div class="form-group">
+              <label for="cust-phone">Phone Number *</label>
+              <input type="text" class="input-control" id="cust-phone" required placeholder="+1 (555) 000-0000">
+            </div>
+            <div class="form-group">
+              <label for="cust-email">Email Address</label>
+              <input type="email" class="input-control" id="cust-email" placeholder="john@example.com">
+            </div>
+          </div>
+          
+          <div style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+            <div class="form-group">
+              <label for="cust-debt">Outstanding Debt (₱)</label>
+              <input type="number" class="input-control" id="cust-debt" step="0.01" min="0" placeholder="0.00">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="app.closeModal('modal-customer')">Cancel</button>
+        <button class="btn btn-primary" id="btn-save-customer">Save Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Mechanic Modal -->
+  <div class="modal-overlay" id="modal-mechanic">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title" id="employee-modal-title">New Mechanic</h3>
+        <button class="modal-close" onclick="app.closeModal('modal-mechanic')">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-mechanic">
+          <input type="hidden" id="mech-id">
+          <div class="form-group">
+            <label for="mech-name">Full Name *</label>
+            <input type="text" class="input-control" id="mech-name" required placeholder="John Doe">
+          </div>
+          <div class="form-group">
+            <label for="mech-role">Role</label>
+            <input type="text" class="input-control" id="mech-role" placeholder="Mechanic">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="app.closeModal('modal-mechanic')">Cancel</button>
+        <button class="btn btn-primary" id="btn-save-mechanic">Save Mechanic</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Labor Record Modal -->
+  <div class="modal-overlay" id="modal-labor">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title">Record Labor</h3>
+        <button class="modal-close" onclick="app.closeModal('modal-labor')">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-labor">
+          <div class="form-group" id="labor-mechanic-group">
+            <label for="labor-mechanic-select">Mechanic *</label>
+            <select class="input-control" id="labor-mechanic-select" required>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="labor-desc">Description *</label>
+            <input type="text" class="input-control" id="labor-desc" required placeholder="e.g. Engine service">
+          </div>
+          <div class="form-group">
+            <label for="labor-amount">Amount (₱) *</label>
+            <input type="number" class="input-control" id="labor-amount" required step="0.01" min="0">
+          </div>
+          <div class="form-group">
+            <label for="labor-date">Date</label>
+            <input type="date" class="input-control" id="labor-date">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="app.closeModal('modal-labor')">Cancel</button>
+        <button class="btn btn-primary" id="btn-save-labor">Save Record</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Attach Customer Modal (For POS) -->
+  <div class="modal-overlay" id="modal-select-customer">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title">Attach Customer to Sale</h3>
+        <button class="modal-close" onclick="app.closeModal('modal-select-customer')">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" class="input-control" id="pos-cust-search" placeholder="Search customer records..." style="margin-bottom: 16px;">
+        <div style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;" id="pos-cust-list">
+          <!-- Selection items populated via JS -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="app.closeModal('modal-select-customer')">Close</button>
+        <button class="btn btn-primary btn-sm" onclick="app.closeModal('modal-select-customer'); app.openCustomerModal();">Create New Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Check-In Motorcycle (New Service Order) -->
+  <div class="modal-overlay" id="modal-checkin">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title">Service Check-In Intake</h3>
+        <button class="modal-close" onclick="app.closeModal('modal-checkin')">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-checkin">
+          <div class="form-group">
+            <label for="checkin-customer-select">Customer Name *</label>
+            <input type="text" class="input-control" id="checkin-customer-select" required placeholder="e.g. John Doe">
+          </div>
+          <div class="form-group">
+            <label for="checkin-vehicle-input">Motorcycle *</label>
+            <input type="text" class="input-control" id="checkin-vehicle-input" required placeholder="e.g. 2023 Honda Click 150 [ABC-1234]">
+          </div>
+          <div class="grid-cols-2">
+            <div class="form-group">
+              <label for="checkin-mechanic">Assigned Mechanic *</label>
+              <select class="input-control" id="checkin-mechanic" required>
+                <option value="">-- Select Mechanic --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="checkin-labor-est">Estimated Labor Charge (₱)</label>
+              <input type="number" class="input-control" id="checkin-labor-est" value="60.00" min="0" step="5">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="checkin-description">Intake Notes / Customer Problem Description</label>
+            <textarea class="input-control" id="checkin-description" rows="4" placeholder="e.g. Check rear brakes, replace oil, chain alignment, tire fitting..."></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="app.closeModal('modal-checkin')">Cancel</button>
+        <button class="btn btn-primary" id="btn-save-checkin">Check-in Vehicle</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manage Service Job Work Order -->
+  <div class="modal-overlay" id="modal-manage-job">
+    <div class="modal-container" style="max-width: 750px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="manage-job-title">Work Order details</h3>
+        <button class="modal-close" onclick="app.closeModal('modal-manage-job')">×</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+        <input type="hidden" id="manage-job-id">
+        
+        <!-- Job Meta Headers -->
+        <div class="grid-cols-3" style="background-color: var(--bg-tertiary); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary);">Customer:</div>
+            <div style="font-weight: 600;" id="manage-job-customer">Alex Mercer</div>
+          </div>
+          <div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary);">Motorcycle:</div>
+            <div style="font-weight: 600;" id="manage-job-vehicle">Yamaha MT-07</div>
+          </div>
+          <div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary);">Opened Date:</div>
+            <div style="font-weight: 600;" id="manage-job-date">2026-07-14</div>
+          </div>
+        </div>
+
+        <div class="grid-cols-2">
+          <div class="form-group">
+            <label for="manage-job-status">Work Order Status</label>
+            <select class="input-control" id="manage-job-status">
+              <option value="Draft">Draft / Intake</option>
+              <option value="Pending Parts">Pending Parts</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Testing">Final Inspection / Testing</option>
+              <option value="Ready">Ready / Finalized</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="manage-job-mechanic">Assigned Mechanic</label>
+            <select class="input-control" id="manage-job-mechanic">
+              <option value="">-- Select Mechanic --</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="manage-job-desc">Work Details</label>
+          <textarea class="input-control" id="manage-job-desc" rows="2"></textarea>
+        </div>
+
+        <!-- Parts & Labor Allocation -->
+        <div style="border-top: 1px solid var(--border-color); padding-top: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div class="card-title" style="margin-bottom: 0; font-size: 1rem;">Allocated Parts & Service Fluids</div>
+            <div style="display: flex; gap: 8px;">
+              <select class="input-control" id="job-parts-dropdown" style="width: 250px; padding: 6px 12px; font-size: 0.85rem;">
+                <option value="">-- Select Part to Allocate --</option>
+                <!-- Filled via JS -->
+              </select>
+              <button class="btn btn-secondary btn-sm" onclick="app.addPartToJob()">Add Part</button>
+            </div>
+          </div>
+          
+          <div class="table-container" style="max-height: 150px; overflow-y: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Part Description</th>
+                  <th style="text-align: right;">Unit Price</th>
+                  <th style="text-align: center; width: 80px;">Qty</th>
+                  <th style="text-align: right;">Total</th>
+                  <th>Remove</th>
+                </tr>
+              </thead>
+              <tbody id="job-allocated-parts-table">
+                <!-- Javascript will load parts list -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Labor Fees -->
+        <div class="grid-cols-2" style="align-items: center; border-top: 1px solid var(--border-color); padding-top: 16px;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="manage-job-labor">Labor Costs (₱)</label>
+            <input type="number" class="input-control" id="manage-job-labor" step="5" min="0">
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">Summary Estimate</div>
+            <div style="font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; color: var(--accent);" id="manage-job-total-calc">₱0.00</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="app.closeModal('modal-manage-job')">Close</button>
+        <button class="btn btn-danger" onclick="app.deleteWorkOrder()">Delete Order</button>
+        <button class="btn btn-primary" onclick="app.saveWorkOrderChanges()">Save Changes</button>
+        <button class="btn btn-success" id="btn-pay-workorder" onclick="app.invoiceAndPayWorkOrder()">Process Payment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POS Payment & Checkout Final Modal -->
+  <div class="modal-overlay" id="modal-checkout">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title">Finalize Transaction</h3>
+        <button class="modal-close" onclick="app.closeModal('modal-checkout')">×</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 20px;">
+        <div style="text-align: center; padding: 10px 0;">
+          <div style="font-size: 0.9rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Amount Due</div>
+          <div style="font-family: var(--font-display); font-size: 2.5rem; font-weight: 800; color: var(--accent);" id="checkout-total">₱0.00</div>
+        </div>
+
+        <div class="form-group">
+          <label style="font-weight: 600;">Choose Payment Method</label>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px;">
+            <label class="pm-option selected" id="pm-cash-label">
+              <input type="radio" name="payment-method" value="Cash" checked style="display: none;">
+              <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M21,18V6H3V18H21M21,4A2,2 0 0,1 23,6V18A2,2 0 0,1 21,20H3A2,2 0 0,1 1,18V6A2,2 0 0,1 3,4H21M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9Z"/></svg>
+              <span>Cash</span>
+            </label>
+            <label class="pm-option" id="pm-card-label">
+              <input type="radio" name="payment-method" value="Card" style="display: none;">
+              <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M20,8H4V6H20M20,18H4V12H20M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,4.89 21.1,4 20,4Z"/></svg>
+              <span>Card</span>
+            </label>
+            <label class="pm-option" id="pm-wallet-label">
+              <input type="radio" name="payment-method" value="Wallet" style="display: none;">
+              <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M21,18H3V6H21M21,4H3A2,2 0 0,0 1,6V18A2,2 0 0,0 3,20H21A2,2 0 0,0 23,18V6A2,2 0 0,0 21,4M16,9H8V11H16V9M16,13H8V15H16V13Z"/></svg>
+              <span>E-Wallet</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 16px;">
+          <label style="font-weight: 600;">Mechanic Labor (Optional)</label>
+          <div class="grid-cols-2" style="gap: 12px; margin-top: 8px;">
+            <div>
+              <label for="checkout-mechanic">Assign To</label>
+              <select class="input-control" id="checkout-mechanic" onchange="app.updateCheckoutTotal()">
+                <option value="">-- No Mechanic --</option>
+              </select>
+            </div>
+            <div>
+              <label for="checkout-labor-fee">Labor Fee (₱)</label>
+              <input type="number" class="input-control" id="checkout-labor-fee" value="0.00" step="1" min="0" oninput="app.updateCheckoutTotal()">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" id="cash-calculator">
+          <div class="grid-cols-2" style="margin-bottom: 12px;">
+            <div>
+              <label for="cash-received">Cash Received (₱)</label>
+              <div class="cash-input-container" style="position: relative;">
+                <span class="cash-symbol" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 700; font-size: 1.2rem; color: var(--text-secondary);">₱</span>
+                <input type="text" class="input-control" id="cash-received" placeholder="0.00" style="font-size: 1.4rem; font-weight: 700; text-align: right; padding-left: 30px;">
+              </div>
+            </div>
+            <div>
+              <label>Change Due</label>
+              <div style="font-family: var(--font-display); font-size: 1.6rem; font-weight: 800; color: var(--success); height: 46px; display: flex; align-items: center; justify-content: flex-end;" id="cash-change-due">₱0.00</div>
+            </div>
+          </div>
+          
+          <!-- Cashier PIN-pad Numpad Grid -->
+          <div class="numpad-grid">
+            <button type="button" class="np-key" data-val="7">7</button>
+            <button type="button" class="np-key" data-val="8">8</button>
+            <button type="button" class="np-key" data-val="9">9</button>
+            <button type="button" class="np-key preset" data-preset="10">+₱10</button>
+            
+            <button type="button" class="np-key" data-val="4">4</button>
+            <button type="button" class="np-key" data-val="5">5</button>
+            <button type="button" class="np-key" data-val="6">6</button>
+            <button type="button" class="np-key preset" data-preset="20">+₱20</button>
+            
+            <button type="button" class="np-key" data-val="1">1</button>
+            <button type="button" class="np-key" data-val="2">2</button>
+            <button type="button" class="np-key" data-val="3">3</button>
+            <button type="button" class="np-key preset" data-preset="50">+₱50</button>
+            
+            <button type="button" class="np-key action-clear" data-action="clear">C</button>
+            <button type="button" class="np-key" data-val="0">0</button>
+            <button type="button" class="np-key" data-val=".">.</button>
+            <button type="button" class="np-key action-exact" data-action="exact">Exact</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="app.closeModal('modal-checkout')">Cancel</button>
+        <button class="btn btn-success" onclick="app.completeTransaction()">Authorize & Print</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Receipt Viewer Modal -->
+  <div class="modal-overlay" id="modal-receipt">
+    <div class="modal-container" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Receipt Generated</h3>
+        <button class="modal-close" onclick="app.closeModal('modal-receipt')">×</button>
+      </div>
+      <div class="modal-body">
+        <!-- Render paper style receipt on screen -->
+        <div style="background-color: #fff; color: #000; padding: 20px; font-family: 'Courier New', Courier, monospace; border-radius: var(--radius-sm); border: 1px solid #ddd; font-size: 12px; line-height: 1.4;" id="screen-receipt-content">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="app.closeModal('modal-receipt')">Close</button>
+        <button class="btn btn-primary" onclick="window.print()">Print Receipt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-holder"></div>
+
+  <!-- Print Container -->
+  <div id="print-receipt-container"></div>
+
+  <!-- DB Loading Splash Overlay -->
+  <div id="db-loading-overlay" class="loading-overlay" style="display: none;">
+    <div class="loading-spinner-wrapper">
+      <div class="logo-icon loading-logo">
+        <svg viewBox="0 0 24 24">
+          <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12C20,14.4 18.9,16.5 17.2,18H6.8C5.1,16.5 4,14.4 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12C6,13.8 6.8,15.4 8,16.5V14H16V16.5C17.2,15.4 18,13.8 18,12A6,6 0 0,0 12,6M10,8H14V10H10V8Z"/>
+        </svg>
+      </div>
+    </div>
+    <div class="loading-text">Connecting to Supabase Database...</div>
+  </div>
+
+  <!-- Supabase JS SDK (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- JavaScript Scripts -->
+  <script src="mockData.js"></script>
+  <script src="supabase.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

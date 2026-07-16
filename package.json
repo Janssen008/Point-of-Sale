@@ -1,0 +1,17 @@
+{
+  "name": "apexmoto-pos",
+  "version": "1.0.0",
+  "description": "ApexMoto Point of Sale system for motorcycle shop, parts and services",
+  "scripts": {
+    "dev": "node local-dev-server.js"
+  },
+  "keywords": [
+    "pos",
+    "motorcycle",
+    "retail",
+    "crm",
+    "billing"
+  ],
+  "author": "Antigravity AI",
+  "license": "MIT"
+}
