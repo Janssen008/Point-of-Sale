@@ -359,7 +359,7 @@ class ApexMotoPOS {
     document.getElementById('current-user-name').textContent = this.currentUser.name;
 
     // Apply RBAC UI Restrictions
-    const restrictedItems = document.querySelectorAll('.sidebar-menu .menu-item[data-view="dashboard"], .sidebar-menu .menu-item[data-view="inventory"], .sidebar-menu .menu-item[data-view="mechanics"]');
+    const restrictedItems = document.querySelectorAll('.sidebar-menu .menu-item[data-view="dashboard"], .sidebar-menu .menu-item[data-view="inventory"], .sidebar-menu .menu-item[data-view="mechanics"], .sidebar-menu .menu-item[data-view="sales-history"]');
     if (this.currentUser.role === 'staff') {
       restrictedItems.forEach(item => item.style.display = 'none');
       this.switchView('pos'); // Default for staff
@@ -394,7 +394,7 @@ class ApexMotoPOS {
       
       // RBAC Check
       if (this.currentUser && this.currentUser.role === 'staff') {
-        const restrictedViews = ['dashboard', 'inventory', 'mechanics'];
+        const restrictedViews = ['dashboard', 'inventory', 'mechanics', 'sales-history'];
         if (restrictedViews.includes(viewId)) {
           this.showToast("Access Denied: Staff cannot access this module.", "danger");
           return;
@@ -428,6 +428,7 @@ class ApexMotoPOS {
         dashboard: "Dashboard Overview",
         pos: "Point of Sale (Cart Checkout)",
         service: "Service & Repair Board",
+        'sales-history': "Sales History & Past Receipts",
         inventory: "Parts Inventory Database",
         customers: "Customer CRM & History",
         mechanics: "Mechanics & Labor"
@@ -465,6 +466,9 @@ class ApexMotoPOS {
         break;
       case 'customers':
         this.renderCustomerCRMList();
+        break;
+      case 'sales-history':
+        this.renderSalesHistory();
         break;
       case 'mechanics':
         this.renderMechanicList();
@@ -2088,10 +2092,9 @@ class ApexMotoPOS {
 
     const receiptHtml = `
       <div class="receipt-header">
-        <div class="receipt-title">DIEGO'S MOTORCYCLE</div>
-        <div style="font-size: 11px; margin-top: 2px;">PARTS & ACCESSORIES</div>
-        <div style="font-size: 10px; margin-top: 4px;">1024 High-Octane Highway, Sector 4</div>
-        <div style="font-size: 10px;">Tel: +1 (555) DIEGOS-MOTO</div>
+        <div class="receipt-title">DIEGO'S</div>
+        <div style="font-size: 11px; margin-top: 2px;">Motorcycle Parts & Accessories</div>
+        <div style="font-size: 10px; margin-top: 4px;">brgy.ganaderia , palayan city</div>
       </div>
       <div class="receipt-divider"></div>
       <div class="receipt-row">
@@ -3117,6 +3120,167 @@ class ApexMotoPOS {
     } catch (err) {
       this.showToast('Error deleting labor record', 'danger');
     }
+  }
+
+  // ==========================================
+  // SALES HISTORY MODULE
+  // ==========================================
+
+  renderSalesHistory() {
+    const listBody = document.getElementById('sales-history-body');
+    if (!listBody) return;
+    listBody.innerHTML = '';
+
+    const searchVal = document.getElementById('sh-search-input').value.toLowerCase().trim();
+
+    let filtered = this.transactions;
+    if (searchVal) {
+      filtered = filtered.filter(tx => 
+        tx.id.toLowerCase().includes(searchVal) ||
+        (tx.customerName && tx.customerName.toLowerCase().includes(searchVal)) ||
+        tx.items.some(item => item.name.toLowerCase().includes(searchVal))
+      );
+    }
+
+    if (filtered.length === 0) {
+      listBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:20px;">No transactions found.</td></tr>`;
+      return;
+    }
+
+    // Sort by date descending (newest first)
+    filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    filtered.forEach(tx => {
+      const isDebt = tx.paymentMethod === 'Debt';
+      const typeBadge = `<span class="badge ${tx.type === 'Service' ? 'badge-info' : 'badge-secondary'}">${tx.type}</span>`;
+      const pmtBadge = isDebt ? `<span class="badge badge-danger">Debt</span>` : `<span class="badge badge-success">${tx.paymentMethod}</span>`;
+      
+      const itemsSummary = tx.items.map(it => `${it.quantity}x ${it.name.split(' ')[0]}`).join(', ');
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong style="color:var(--accent); font-family:monospace;">${tx.id}</strong></td>
+        <td>${new Date(tx.date).toLocaleString()}</td>
+        <td>${typeBadge}</td>
+        <td>${tx.customerName || 'Walk-in'}</td>
+        <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${itemsSummary}">${itemsSummary}</td>
+        <td style="text-align:right; font-weight:700; color:${isDebt ? 'var(--danger)' : 'var(--text-primary)'}">₱${tx.total.toFixed(2)}</td>
+        <td>${pmtBadge}</td>
+        <td style="text-align:center;">
+          <button class="btn btn-secondary btn-sm" onclick="app.viewPastReceipt('${tx.id}')">View</button>
+        </td>
+      `;
+      listBody.appendChild(tr);
+    });
+  }
+
+  viewPastReceipt(txId) {
+    const tx = this.transactions.find(t => t.id === txId);
+    if (!tx) return;
+
+    this.currentViewReceipt = tx; // Store it for re-printing
+
+    const content = document.getElementById('past-receipt-content');
+    
+    let itemsHtml = '';
+    tx.items.forEach(item => {
+      const itemTotal = item.quantity * item.price;
+      itemsHtml += `
+        <div style="display:flex; justify-content:space-between; margin-bottom: 2px;">
+          <span style="flex-grow:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.name}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; color: #555; margin-bottom: 6px;">
+          <span>${item.quantity} x ${item.price.toFixed(2)}</span>
+          <span>${itemTotal.toFixed(2)}</span>
+        </div>
+      `;
+    });
+
+    const isDebt = tx.paymentMethod === 'Debt';
+
+    content.innerHTML = `
+      <div style="text-align:center; margin-bottom: 15px;">
+        <strong style="font-size: 1.2rem;">DIEGO'S</strong><br>
+        <span>Motorcycle Parts & Accessories</span><br>
+        <span style="font-size: 0.85rem;">brgy.ganaderia , palayan city</span><br>
+        <span style="margin-top: 5px; display: inline-block;">Receipt: ${tx.id}</span><br>
+        <span>Date: ${new Date(tx.date).toLocaleString()}</span>
+      </div>
+      
+      ${tx.customerName ? `
+        <div style="margin-bottom:15px; border-bottom: 1px dashed #ccc; padding-bottom:10px;">
+          Customer: <strong>${tx.customerName}</strong>
+        </div>
+      ` : ''}
+
+      <div style="border-bottom: 1px dashed #ccc; margin-bottom: 10px; padding-bottom: 5px;">
+        ${itemsHtml}
+      </div>
+
+      <div style="display:flex; justify-content:space-between;">
+        <span>Subtotal</span>
+        <span>${tx.subtotal.toFixed(2)}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between;">
+        <span>Discount</span>
+        <span>${(tx.discount || 0).toFixed(2)}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-weight:bold; font-size: 1.1rem; margin-top: 5px;">
+        <span>TOTAL</span>
+        <span>₱${tx.total.toFixed(2)}</span>
+      </div>
+
+      <div style="margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 10px;">
+        <div style="display:flex; justify-content:space-between;">
+          <span>Payment Type:</span>
+          <span style="${isDebt ? 'color:red;font-weight:bold;' : ''}">${tx.paymentMethod}</span>
+        </div>
+        ${!isDebt && tx.amountTendered ? `
+          <div style="display:flex; justify-content:space-between;">
+            <span>Cash Given:</span>
+            <span>${tx.amountTendered.toFixed(2)}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span>Change:</span>
+            <span>${(tx.changeDue || 0).toFixed(2)}</span>
+          </div>
+        ` : ''}
+      </div>
+      
+      <div style="text-align:center; margin-top: 20px; font-size: 0.8rem; color: #666;">
+        ${isDebt ? '*** UNPAID BALANCE ***' : 'Thank you for your business!'}
+      </div>
+    `;
+
+    this.openModal('modal-past-receipt');
+  }
+
+  reprintPastReceipt() {
+    if (!this.currentViewReceipt) return;
+    const tx = this.currentViewReceipt;
+    
+    // Populate the hidden print container
+    const printContainer = document.getElementById('print-receipt-container');
+    printContainer.innerHTML = document.getElementById('past-receipt-content').innerHTML;
+
+    // Use dynamic style
+    let style = document.getElementById('dynamic-print-style');
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'dynamic-print-style';
+      document.head.appendChild(style);
+    }
+    style.innerHTML = `@page { size: 58mm auto; margin: 0; }`;
+
+    document.getElementById('modal-past-receipt').style.display = 'none';
+
+    window.print();
+
+    setTimeout(() => {
+      style.innerHTML = '';
+      printContainer.innerHTML = '';
+      document.getElementById('modal-past-receipt').style.display = 'flex';
+    }, 1000);
   }
 
 }

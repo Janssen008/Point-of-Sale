@@ -42,6 +42,12 @@
           Service Tracker
         </button>
       </li>
+      <li class="menu-item" data-view="sales-history">
+        <button>
+          <svg viewBox="0 0 24 24"><path d="M13.5,8H12V13L16.28,15.54L17,14.33L13.5,12.25V8M13,3A9,9 0 0,0 4,12H1L4.96,16.03L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.21 8.06,16.94L6.64,18.36C8.27,19.99 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3"/></svg>
+          Sales History
+        </button>
+      </li>
       <li class="menu-item" data-view="inventory">
         <button>
           <svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12C20,12.5 19.9,13.1 19.8,13.6L16.2,10H14V7.8L12.4,6.2C12.3,6.1 12.1,6 12,6A8,8 0 0,1 12,4M8.2,9L12,12.8L12.8,12L9,8.2C8.6,8.4 8.4,8.6 8.2,9M5.8,12H8V14.2L9.6,15.8C9.7,15.9 9.9,16 10,16C10.5,16 11,15.5 11,15L11,12.8L13.8,10H16.2L19.4,13.2C18.9,16.5 16.2,19.1 12.8,19.6L10,16.8V14.6L8.4,13C8.3,12.9 8.1,12.8 8,12.8A8,8 0 0,1 5.8,12Z"/></svg>
@@ -105,9 +111,7 @@
             Unlock POS
           </button>
           
-          <div style="margin-top: 20px; font-size: 0.75rem; color: var(--text-muted);">
-            Admin PIN: 1234 &nbsp;|&nbsp; Staff PIN: 0000
-          </div>
+
         </div>
       </section>
 
@@ -377,6 +381,35 @@
             </div>
             <div class="jobs-list" id="list-Ready"></div>
           </div>
+        </div>
+      </section>
+
+      <!-- ================= SALES HISTORY VIEW ================= -->
+      <section id="view-sales-history" class="view-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <input type="text" class="input-control" id="sh-search-input" placeholder="Search by receipt ID, customer name..." style="width: 320px;" oninput="app.renderSalesHistory()">
+          <div style="font-size: 0.9rem; color: var(--text-secondary);">
+            Showing all past transactions
+          </div>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Receipt ID</th>
+                <th>Date / Time</th>
+                <th>Type</th>
+                <th>Customer Name</th>
+                <th>Items Summary</th>
+                <th style="text-align: right;">Total Amount</th>
+                <th>Payment</th>
+                <th style="text-align: center;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="sales-history-body">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -1061,6 +1094,29 @@
 
   <!-- Print Container -->
   <div id="print-receipt-container"></div>
+
+  <!-- Batch Barcode Print Container (Hidden from Screen) -->
+  <div id="print-all-barcodes-container"></div>
+
+  <!-- View Past Receipt Modal -->
+  <div class="modal-overlay" id="modal-past-receipt">
+    <div class="modal-container" style="max-width: 400px; padding: 0;">
+      <div class="modal-header" style="border-bottom: 1px dashed var(--border-color); padding: 16px 20px;">
+        <h3 class="modal-title" style="font-family: monospace; font-size: 1.1rem; color: var(--text-primary);">Receipt Details</h3>
+        <button class="modal-close" onclick="app.closeModal('modal-past-receipt')">×</button>
+      </div>
+      <div class="modal-body" style="padding: 20px; font-family: monospace; font-size: 0.9rem; background: #fff; color: #000; display: flex; justify-content: center;">
+        <!-- Container mimicking physical thermal receipt paper -->
+        <div id="past-receipt-content" style="width: 100%; max-width: 320px;"></div>
+      </div>
+      <div class="modal-footer" style="padding: 16px 20px; border-top: 1px dashed var(--border-color); background: var(--bg-tertiary);">
+        <button class="btn btn-primary" onclick="app.reprintPastReceipt()" style="width: 100%; justify-content: center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18,3H6V7H18M19,12A1,1 0 0,1 18,11A1,1 0 0,1 19,10A1,1 0 0,1 20,11A1,1 0 0,1 19,12M16,19H8V14H16M19,8H5A3,3 0 0,0 2,11V17H6V21H18V17H22V11A3,3 0 0,0 19,8Z"/></svg>
+          Reprint Receipt
+        </button>
+      </div>
+    </div>
+  </div>
   <div id="print-barcode-container">
     <div class="barcode-label">
       <div id="barcode-item-name"></div>
@@ -1068,7 +1124,7 @@
       <div id="barcode-item-price"></div>
     </div>
   </div>
-  <div id="print-all-barcodes-container"></div>
+
 
   <!-- DB Loading Splash Overlay -->
   <div id="db-loading-overlay" class="loading-overlay" style="display: none;">
