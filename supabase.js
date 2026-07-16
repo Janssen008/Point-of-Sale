@@ -8,12 +8,14 @@ const SUPABASE_URL  = 'https://oevkmvxwukqujjeuwtef.supabase.co';   // e.g. http
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ldmttdnh3dWtxdWpqZXV3dGVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNTMzMDEsImV4cCI6MjA5OTYyOTMwMX0.MIhBeKJDTTWEORuLyEhWywUJXurOcD7opMLCp2Q4QEw';      // starts with "eyJ..."
 
 // Initialize the Supabase client (loaded via CDN in index.html)
-let supabase;
+let _supabase;
 const IS_MOCK = SUPABASE_ANON === 'YOUR_SUPABASE_ANON_KEY';
 try {
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+  const supabaseLib = window.supabase;
+  _supabase = supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON);
+  console.log('[Supabase] Client initialized successfully.');
 } catch (e) {
-  console.warn("Invalid Supabase URL, database features will be unavailable.");
+  console.error('[Supabase] Failed to initialize client:', e);
 }
 
 // =====================================================================
@@ -25,7 +27,7 @@ const DB = {
   // ─── PARTS ──────────────────────────────────────────────────────────
 
   async getParts() {
-    const { data, error } = await supabase
+    const { data, error } = await _supabase
       .from('parts')
       .select('*')
       .order('category', { ascending: true })
@@ -57,7 +59,7 @@ const DB = {
     if (part.id && !part.id.startsWith('p')) {
       row.id = part.id;  // existing UUID
     }
-    const { data, error } = await supabase
+    const { data, error } = await _supabase
       .from('parts')
       .upsert(row, { onConflict: 'id' })
       .select()
@@ -67,7 +69,7 @@ const DB = {
   },
 
   async updatePartStock(partId, newStock) {
-    const { error } = await supabase
+    const { error } = await _supabase
       .from('parts')
       .update({ stock: newStock })
       .eq('id', partId);
@@ -75,7 +77,7 @@ const DB = {
   },
 
   async deletePart(partId) {
-    const { error } = await supabase
+    const { error } = await _supabase
       .from('parts')
       .delete()
       .eq('id', partId);
@@ -85,13 +87,13 @@ const DB = {
   // ─── CUSTOMERS ──────────────────────────────────────────────────────
 
   async getCustomers() {
-    const { data: customers, error: custErr } = await supabase
+    const { data: customers, error: custErr } = await _supabase
       .from('customers')
       .select('*')
       .order('name', { ascending: true });
     if (custErr) throw custErr;
 
-    const { data: vehicles, error: vehErr } = await supabase
+    const { data: vehicles, error: vehErr } = await _supabase
       .from('vehicles')
       .select('*');
     if (vehErr) throw vehErr;
@@ -124,7 +126,7 @@ const DB = {
     if (customer.id && customer.id.includes('-') && customer.id.length > 10) {
       row.id = customer.id;
     }
-    const { data, error } = await supabase
+    const { data, error } = await _supabase
       .from('customers')
       .upsert(row, { onConflict: 'id' })
       .select()
@@ -134,7 +136,7 @@ const DB = {
   },
 
   async deleteCustomer(customerId) {
-    const { error } = await supabase
+    const { error } = await _supabase
       .from('customers')
       .delete()
       .eq('id', customerId);
@@ -144,7 +146,7 @@ const DB = {
   // ─── VEHICLES ───────────────────────────────────────────────────────
 
   async addVehicle(customerId, vehicle) {
-    const { data, error } = await supabase
+    const { data, error } = await _supabase
       .from('vehicles')
       .insert({
         customer_id: customerId,
@@ -161,7 +163,7 @@ const DB = {
   },
 
   async deleteVehicle(vehicleId) {
-    const { error } = await supabase
+    const { error } = await _supabase
       .from('vehicles')
       .delete()
       .eq('id', vehicleId);
@@ -171,13 +173,13 @@ const DB = {
   // ─── SERVICE JOBS ───────────────────────────────────────────────────
 
   async getServiceJobs() {
-    const { data: jobs, error: jobErr } = await supabase
+    const { data: jobs, error: jobErr } = await _supabase
       .from('service_jobs')
       .select('*')
       .order('created_at', { ascending: false });
     if (jobErr) throw jobErr;
 
-    const { data: jobParts, error: partsErr } = await supabase
+    const { data: jobParts, error: partsErr } = await _supabase
       .from('service_job_parts')
       .select('*');
     if (partsErr) throw partsErr;
@@ -206,7 +208,7 @@ const DB = {
   },
 
   async createServiceJob(job) {
-    const { error } = await supabase
+    const { error } = await _supabase
       .from('service_jobs')
       .insert({
         id:            job.id,
@@ -222,7 +224,7 @@ const DB = {
   },
 
   async updateServiceJob(job) {
-    const { error } = await supabase
+    const { error } = await _supabase
       .from('service_jobs')
       .update({
         status:      job.status,
@@ -236,7 +238,7 @@ const DB = {
   },
 
   async deleteServiceJob(jobId) {
-    const { error } = await supabase
+    const { error } = await _supabase
       .from('service_jobs')
       .delete()
       .eq('id', jobId);
@@ -247,7 +249,7 @@ const DB = {
 
   async addPartToJob(jobId, partId, name, price) {
     // Check if part already allocated to this job
-    const { data: existing } = await supabase
+    const { data: existing } = await _supabase
       .from('service_job_parts')
       .select('id, quantity')
       .eq('job_id', jobId)
@@ -255,13 +257,13 @@ const DB = {
       .single();
 
     if (existing) {
-      const { error } = await supabase
+      const { error } = await _supabase
         .from('service_job_parts')
         .update({ quantity: existing.quantity + 1 })
         .eq('id', existing.id);
       if (error) throw error;
     } else {
-      const { error } = await supabase
+      const { error } = await _supabase
         .from('service_job_parts')
         .insert({ job_id: jobId, part_id: partId, name, price, quantity: 1 });
       if (error) throw error;
@@ -269,7 +271,7 @@ const DB = {
   },
 
   async updateJobPartQty(rowId, newQty) {
-    const { error } = await supabase
+    const { error } = await _supabase
       .from('service_job_parts')
       .update({ quantity: newQty })
       .eq('id', rowId);
@@ -277,7 +279,7 @@ const DB = {
   },
 
   async removeJobPart(rowId) {
-    const { error } = await supabase
+    const { error } = await _supabase
       .from('service_job_parts')
       .delete()
       .eq('id', rowId);
@@ -287,13 +289,13 @@ const DB = {
   // ─── TRANSACTIONS ────────────────────────────────────────────────────
 
   async getTransactions() {
-    const { data: txs, error: txErr } = await supabase
+    const { data: txs, error: txErr } = await _supabase
       .from('transactions')
       .select('*')
       .order('date', { ascending: false });
     if (txErr) throw txErr;
 
-    const { data: items, error: itemErr } = await supabase
+    const { data: items, error: itemErr } = await _supabase
       .from('transaction_items')
       .select('*');
     if (itemErr) throw itemErr;
@@ -322,7 +324,7 @@ const DB = {
   },
 
   async createTransaction(tx) {
-    const { error: txErr } = await supabase
+    const { error: txErr } = await _supabase
       .from('transactions')
       .insert({
         id:             tx.id,
@@ -347,7 +349,7 @@ const DB = {
         quantity:       item.quantity,
         price:          item.price,
       }));
-      const { error: itemErr } = await supabase
+      const { error: itemErr } = await _supabase
         .from('transaction_items')
         .insert(itemRows);
       if (itemErr) throw itemErr;
@@ -357,13 +359,13 @@ const DB = {
   // ─── MECHANICS & LABOR ──────────────────────────────────────────────
 
   async getMechanics() {
-    const { data: mechanics, error: mechErr } = await supabase
+    const { data: mechanics, error: mechErr } = await _supabase
       .from('mechanics')
       .select('*')
       .order('name', { ascending: true });
     if (mechErr) throw mechErr;
 
-    const { data: laborRecords, error: laborErr } = await supabase
+    const { data: laborRecords, error: laborErr } = await _supabase
       .from('labor_records')
       .select('*')
       .order('date', { ascending: false });
@@ -392,7 +394,7 @@ const DB = {
     if (mechanic.id && mechanic.id.includes('-') && mechanic.id.length > 10) {
       row.id = mechanic.id;
     }
-    const { data, error } = await supabase
+    const { data, error } = await _supabase
       .from('mechanics')
       .upsert(row, { onConflict: 'id' })
       .select()
@@ -402,7 +404,7 @@ const DB = {
   },
 
   async deleteMechanic(mechanicId) {
-    const { error } = await supabase
+    const { error } = await _supabase
       .from('mechanics')
       .delete()
       .eq('id', mechanicId);
@@ -410,7 +412,7 @@ const DB = {
   },
 
   async addLaborRecord(mechanicId, record) {
-    const { data, error } = await supabase
+    const { data, error } = await _supabase
       .from('labor_records')
       .insert({
         mechanic_id: mechanicId,
@@ -425,7 +427,7 @@ const DB = {
   },
 
   async deleteLaborRecord(mechanicId, recordId) {
-    const { error } = await supabase
+    const { error } = await _supabase
       .from('labor_records')
       .delete()
       .eq('id', recordId);
