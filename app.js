@@ -2129,6 +2129,16 @@ class ApexMotoPOS {
         <span>Payment Method:</span>
         <span>${tx.paymentMethod}</span>
       </div>
+      ${tx.paymentMethod === 'Cash' && tx.amountTendered !== undefined && tx.amountTendered !== null ? `
+      <div class="receipt-row">
+        <span>Cash Given:</span>
+        <span>₱${tx.amountTendered.toFixed(2)}</span>
+      </div>
+      <div class="receipt-row">
+        <span>Change:</span>
+        <span>₱${tx.changeDue.toFixed(2)}</span>
+      </div>
+      ` : ''}
       <div class="receipt-divider"></div>
       <div style="text-align:center; font-size:10px; margin-top: 15px; font-weight: bold;">
         RIDE SAFE • DIEGO'S SHOP
@@ -2271,16 +2281,84 @@ class ApexMotoPOS {
   }
 
   populateManageJobPartsDropdown() {
-    const select = document.getElementById('job-parts-dropdown');
-    select.innerHTML = '<option value="">-- Select Part to Allocate --</option>';
+    // Now populates the category dropdown and renders the card grid
+    this.populateJobPartCategories();
+    this.renderJobPartPicker();
+  }
 
-    // Filter available parts (stock > 0)
-    const availableParts = this.parts.filter(p => p.stock > 0);
-    availableParts.forEach(p => {
+  populateJobPartCategories() {
+    const catSelect = document.getElementById('job-part-category');
+    if (!catSelect) return;
+    catSelect.innerHTML = '<option value="All">All Categories</option>';
+    const categories = [...new Set(this.parts.map(p => p.category))].sort();
+    categories.forEach(cat => {
       const opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = `${p.sku} - ${p.name} (₱${p.price.toFixed(2)}) [Stock: ${p.stock}]`;
-      select.appendChild(opt);
+      opt.value = cat;
+      opt.textContent = cat;
+      catSelect.appendChild(opt);
+    });
+  }
+
+  renderJobPartPicker() {
+    const grid = document.getElementById('job-part-picker-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const query = (document.getElementById('job-part-search')?.value || '').toLowerCase().trim();
+    const category = document.getElementById('job-part-category')?.value || 'All';
+
+    let filtered = this.parts;
+    if (category !== 'All') filtered = filtered.filter(p => p.category === category);
+    if (query) {
+      filtered = filtered.filter(p =>
+        p.name.toLowerCase().includes(query) ||
+        p.sku.toLowerCase().includes(query) ||
+        p.category.toLowerCase().includes(query)
+      );
+    }
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--text-muted);font-size:0.85rem;">No parts found. Try a different search.</div>`;
+      return;
+    }
+
+    // Get current job to check already-allocated parts
+    const job = this.serviceJobs.find(j => j.id === this.activeJobId);
+    const allocatedIds = job ? job.parts.map(p => p.partId) : [];
+
+    filtered.forEach(p => {
+      const isOut = p.stock === 0;
+      const isAllocated = allocatedIds.includes(p.id);
+      const allocatedQty = isAllocated ? job.parts.find(jp => jp.partId === p.id)?.quantity || 0 : 0;
+
+      const card = document.createElement('div');
+      card.style.cssText = `
+        background: var(--bg-surface); border: 1px solid ${isOut ? 'rgba(231,76,60,0.3)' : isAllocated ? 'var(--accent)' : 'var(--border-color)'};
+        border-radius: 8px; padding: 10px; cursor: ${isOut ? 'not-allowed' : 'pointer'};
+        opacity: ${isOut ? '0.5' : '1'}; transition: all 0.2s;
+        display: flex; flex-direction: column; gap: 4px;
+      `;
+
+      let stockBadge = `<span style="font-size:0.68rem;padding:2px 6px;border-radius:12px;background:rgba(46,204,113,0.15);color:var(--success);font-weight:600;">${p.stock} avail</span>`;
+      if (isOut) stockBadge = `<span style="font-size:0.68rem;padding:2px 6px;border-radius:12px;background:rgba(231,76,60,0.15);color:var(--danger);font-weight:600;">Out</span>`;
+
+      card.innerHTML = `
+        <div style="font-size:0.68rem;color:var(--text-secondary);font-family:monospace;letter-spacing:0.3px;">${p.sku}</div>
+        <div style="font-size:0.8rem;font-weight:600;line-height:1.2;flex-grow:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${p.name}">${p.name}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
+          <div style="font-size:0.85rem;font-weight:700;color:var(--accent);">₱${p.price.toFixed(2)}</div>
+          ${stockBadge}
+        </div>
+        ${isAllocated ? `<div style="font-size:0.7rem;text-align:center;padding:3px;background:rgba(var(--accent-rgb,255,95,31),0.1);border-radius:4px;color:var(--accent);margin-top:2px;">✓ Allocated (${allocatedQty})</div>` : ''}
+      `;
+
+      if (!isOut) {
+        card.addEventListener('click', () => this.addPartToJob(p.id));
+        card.addEventListener('mouseenter', () => { card.style.borderColor = 'var(--accent)'; card.style.transform = 'translateY(-2px)'; });
+        card.addEventListener('mouseleave', () => { card.style.borderColor = isAllocated ? 'var(--accent)' : 'var(--border-color)'; card.style.transform = ''; });
+      }
+
+      grid.appendChild(card);
     });
   }
 
@@ -2533,12 +2611,16 @@ class ApexMotoPOS {
     const totalVal = parseFloat(rawTotal.replace(/[^0-9.-]+/g, '')) || 0;
     const paymentMethod = document.querySelector('input[name="payment-method"]:checked').value;
 
+    let cashReceived = null;
+    let changeDue = null;
+
     if (paymentMethod === 'Cash') {
-      const cashReceived = parseFloat(document.getElementById('cash-received').value) || 0;
+      cashReceived = parseFloat(document.getElementById('cash-received').value) || 0;
       if (cashReceived < totalVal) {
         this.showToast("Cash received must cover invoice amount!", "warning");
         return;
       }
+      changeDue = cashReceived - totalVal;
     }
 
     if (paymentMethod === 'Debt' && !this.selectedCustomer) {
@@ -2582,6 +2664,7 @@ class ApexMotoPOS {
         customerId: job.customerId, customerName: job.customerName,
         vehicle: job.vehicle, items: itemsRecord,
         subtotal: laborSubtotal, discount: 0.00, total: totalVal, paymentMethod,
+        amountTendered: cashReceived, changeDue: changeDue,
         date: new Date().toISOString()
       };
 
@@ -2633,7 +2716,8 @@ class ApexMotoPOS {
         customerId: this.selectedCustomer ? this.selectedCustomer.id : null,
         customerName: this.selectedCustomer ? this.selectedCustomer.name : "Walk-in Customer",
         items: itemsRecord, subtotal: laborSubtotal, discount,
-        total: totalVal, paymentMethod, date: new Date().toISOString()
+        total: totalVal, paymentMethod, 
+        amountTendered: cashReceived, changeDue: changeDue, date: new Date().toISOString()
       };
 
       // --- AUTO-RECORD LABOR TO MECHANIC ---
