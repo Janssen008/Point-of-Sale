@@ -23,6 +23,9 @@ class ApexMotoPOS {
 
     // Loading state
     this.isLoading = false;
+    
+    // Auth State
+    this.currentUser = null;
   }
 
   async init() {
@@ -31,7 +34,7 @@ class ApexMotoPOS {
     this.showLoadingOverlay(true);
     try {
       await this.loadData();
-      this.switchView('dashboard');
+      this.switchView('login');
       this.showToast("Connected to Supabase — Data Loaded", "success");
     } catch (err) {
       console.error('Supabase init error:', err);
@@ -160,6 +163,17 @@ class ApexMotoPOS {
       });
     }
 
+    // Handle Barcode Scanner "Enter" inside SKU field
+    const partSkuInput = document.getElementById('part-sku');
+    if (partSkuInput) {
+      partSkuInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault(); // Prevent form submission
+          document.getElementById('part-name').focus(); // Jump to next field
+        }
+      });
+    }
+
     // Add Customer Form Submission
     const saveCustBtn = document.getElementById('btn-save-customer');
     if (saveCustBtn) {
@@ -272,7 +286,7 @@ class ApexMotoPOS {
           case 'F12':
             const receiptModal = document.getElementById('modal-receipt');
             if (receiptModal && receiptModal.classList.contains('active')) {
-              window.print();
+              this.printReceipt();
             } else {
               this.showToast("[F12] Print Receipt only active when receipt modal is open", "warning");
             }
@@ -327,9 +341,67 @@ class ApexMotoPOS {
     }, 3000);
   }
 
+  // --- AUTHENTICATION MODULE ---
+  handleLogin() {
+    const pin = document.getElementById('login-pin-input').value.trim();
+    if (pin === '1234') {
+      this.currentUser = { name: 'Pew Miller', role: 'admin', initial: 'PM' };
+    } else if (pin === '0000') {
+      this.currentUser = { name: 'Staff User', role: 'staff', initial: 'SU' };
+    } else {
+      this.showToast("Invalid PIN. Please try again.", "danger");
+      document.getElementById('login-pin-input').value = '';
+      return;
+    }
+
+    // Update Header Profile
+    document.getElementById('current-user-avatar').textContent = this.currentUser.initial;
+    document.getElementById('current-user-name').textContent = this.currentUser.name;
+
+    // Apply RBAC UI Restrictions
+    const restrictedItems = document.querySelectorAll('.sidebar-menu .menu-item[data-view="dashboard"], .sidebar-menu .menu-item[data-view="inventory"], .sidebar-menu .menu-item[data-view="mechanics"]');
+    if (this.currentUser.role === 'staff') {
+      restrictedItems.forEach(item => item.style.display = 'none');
+      this.switchView('pos'); // Default for staff
+    } else {
+      restrictedItems.forEach(item => item.style.display = 'flex');
+      this.switchView('dashboard'); // Default for admin
+    }
+
+    this.showToast(`Logged in as ${this.currentUser.name}`, "success");
+  }
+
+  logout() {
+    this.currentUser = null;
+    this.switchView('login');
+    this.showToast("Successfully logged out", "info");
+  }
+
   // View Manager Router
   switchView(viewId) {
-    this.activeView = viewId;
+    if (viewId === 'login') {
+      document.body.classList.add('login-mode');
+      this.activeView = 'login';
+      setTimeout(() => {
+        const pinInput = document.getElementById('login-pin-input');
+        if (pinInput) {
+          pinInput.value = '';
+          pinInput.focus();
+        }
+      }, 50);
+    } else {
+      document.body.classList.remove('login-mode');
+      
+      // RBAC Check
+      if (this.currentUser && this.currentUser.role === 'staff') {
+        const restrictedViews = ['dashboard', 'inventory', 'mechanics'];
+        if (restrictedViews.includes(viewId)) {
+          this.showToast("Access Denied: Staff cannot access this module.", "danger");
+          return;
+        }
+      }
+      this.activeView = viewId;
+    }
     
     // Update Sidebar states
     document.querySelectorAll('.sidebar-menu .menu-item').forEach(item => {
@@ -932,8 +1004,9 @@ class ApexMotoPOS {
         <td style="text-align:center;">${stockCell}</td>
         <td style="text-align:center; color:var(--text-secondary);">${p.minStock} units</td>
         <td>
-          <div style="display:flex; gap:8px;">
-            <button class="btn btn-secondary btn-sm" onclick="app.openPartModal('${p.id}')">Edit</button>
+          <div style="display:flex; gap:4px;">
+            <button class="btn btn-secondary btn-sm btn-icon-only" onclick="app.printBarcode('${p.id}')" title="Print Barcode"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18,3H6V7H18M19,12A1,1 0 0,1 18,11A1,1 0 0,1 19,10A1,1 0 0,1 20,11A1,1 0 0,1 19,12M16,19H8V14H16M19,8H5A3,3 0 0,0 2,11V17H6V21H18V17H22V11A3,3 0 0,0 19,8Z"/></svg></button>
+            <button class="btn btn-secondary btn-sm btn-icon-only" onclick="app.openPartModal('${p.id}')" title="Edit Part"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg></button>
             <button class="btn btn-danger btn-sm btn-icon-only" onclick="app.deletePart('${p.id}')" title="Delete Part">×</button>
           </div>
         </td>
@@ -1220,6 +1293,294 @@ class ApexMotoPOS {
     document.getElementById(modalId).classList.remove('active');
   }
 
+  // --- BARCODE PRINTING ---
+  printBarcode(partId) {
+    const part = this.parts.find(p => p.id === partId);
+    if (!part) return;
+
+    if (typeof JsBarcode === 'undefined') {
+      this.showToast("Barcode library not loaded yet. Please wait.", "warning");
+      return;
+    }
+
+    // Populate Print Container
+    document.getElementById('barcode-item-name').textContent = part.name;
+    document.getElementById('barcode-item-price').textContent = `₱${part.price.toFixed(2)}`;
+
+    // Populate Modal Preview Container
+    document.getElementById('preview-barcode-name').textContent = part.name;
+    document.getElementById('preview-barcode-price').textContent = `₱${part.price.toFixed(2)}`;
+
+    const barcodeConfig = {
+      format: "CODE128",
+      lineColor: "#000",
+      width: 1.5,
+      height: 40,
+      displayValue: true,
+      fontSize: 11,
+      textMargin: 1,
+      margin: 0
+    };
+
+    // Generate barcode SVG for Print Container
+    JsBarcode("#barcode-svg", part.sku, barcodeConfig);
+    // Generate barcode SVG for Modal Preview
+    JsBarcode("#preview-barcode-svg", part.sku, barcodeConfig);
+
+    // Open Modal
+    this.openModal('modal-barcode');
+  }
+
+  confirmPrintBarcode() {
+    // Inject dynamic @page size for the barcode label
+    let style = document.getElementById('dynamic-print-style');
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'dynamic-print-style';
+      document.head.appendChild(style);
+    }
+    style.innerHTML = `@page { size: 1.54in 0.83in; margin: 0; }`;
+
+    // Trigger Print
+    window.print();
+
+    // Reset style after print dialog closes
+    setTimeout(() => { 
+      style.innerHTML = ''; 
+      this.closeModal('modal-barcode');
+    }, 1000);
+  }
+
+  // --- MASS BARCODE PRINTING MODULE ---
+  openMassBarcodeModal() {
+    if (typeof JsBarcode === 'undefined') {
+      this.showToast("Barcode library not loaded yet. Please wait.", "warning");
+      return;
+    }
+    if (this.parts.length === 0) {
+      this.showToast("No inventory items available.", "warning");
+      return;
+    }
+
+    // Initialize selection state: { partId: { selected: false, qty: 1 } }
+    this.massBarcodeState = {};
+    this.parts.forEach(p => {
+      this.massBarcodeState[p.id] = { selected: false, qty: 1 };
+    });
+
+    this.renderMassBarcodeList();
+    this.updateMassSummary();
+    this.openModal('modal-mass-barcode');
+
+    // Clear search
+    const searchInput = document.getElementById('mass-barcode-search');
+    if (searchInput) searchInput.value = '';
+  }
+
+  renderMassBarcodeList(filter = '') {
+    const listEl = document.getElementById('mass-barcode-list');
+    listEl.innerHTML = '';
+
+    const filtered = this.parts.filter(p =>
+      p.name.toLowerCase().includes(filter) ||
+      p.sku.toLowerCase().includes(filter) ||
+      p.category.toLowerCase().includes(filter)
+    );
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = `<div style="padding: 30px; text-align: center; color: var(--text-muted);">No items matched your search.</div>`;
+      return;
+    }
+
+    filtered.forEach(p => {
+      const state = this.massBarcodeState[p.id];
+      const row = document.createElement('div');
+      row.style.cssText = 'display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid var(--border-color);';
+      row.id = `mass-row-${p.id}`;
+
+      row.innerHTML = `
+        <input type="checkbox" id="mass-chk-${p.id}" ${state.selected ? 'checked' : ''}
+          style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); flex-shrink: 0;"
+          onchange="app.toggleMassItem('${p.id}', this.checked)">
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.name}</div>
+          <div style="font-size: 0.78rem; color: var(--text-muted);">${p.sku} &nbsp;·&nbsp; ${p.category} &nbsp;·&nbsp; ₱${p.price.toFixed(2)}</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+          <label style="font-size: 0.8rem; color: var(--text-secondary);">Qty:</label>
+          <input type="number" min="1" max="100" value="${state.qty}"
+            style="width: 55px; text-align: center; padding: 4px 6px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-primary); color: var(--text-primary); font-size: 0.85rem;"
+            onchange="app.setMassItemQty('${p.id}', this.value)">
+        </div>
+      `;
+      listEl.appendChild(row);
+    });
+  }
+
+  filterMassBarcodeList() {
+    const val = document.getElementById('mass-barcode-search').value.toLowerCase().trim();
+    this.renderMassBarcodeList(val);
+  }
+
+  toggleMassItem(partId, checked) {
+    if (this.massBarcodeState[partId]) {
+      this.massBarcodeState[partId].selected = checked;
+    }
+    this.updateMassSummary();
+  }
+
+  setMassItemQty(partId, val) {
+    const qty = Math.max(1, Math.min(100, parseInt(val) || 1));
+    if (this.massBarcodeState[partId]) {
+      this.massBarcodeState[partId].qty = qty;
+    }
+    this.updateMassSummary();
+  }
+
+  massSelectAll(selectAll) {
+    const searchVal = document.getElementById('mass-barcode-search').value.toLowerCase().trim();
+    const visibleParts = this.parts.filter(p =>
+      p.name.toLowerCase().includes(searchVal) ||
+      p.sku.toLowerCase().includes(searchVal) ||
+      p.category.toLowerCase().includes(searchVal)
+    );
+
+    visibleParts.forEach(p => {
+      this.massBarcodeState[p.id].selected = selectAll;
+      const chk = document.getElementById(`mass-chk-${p.id}`);
+      if (chk) chk.checked = selectAll;
+    });
+
+    this.updateMassSummary();
+  }
+
+  massSetQty() {
+    const val = prompt("Set quantity for all selected items:", "1");
+    if (val === null) return;
+    const qty = Math.max(1, Math.min(100, parseInt(val) || 1));
+
+    Object.keys(this.massBarcodeState).forEach(id => {
+      if (this.massBarcodeState[id].selected) {
+        this.massBarcodeState[id].qty = qty;
+      }
+    });
+
+    // Re-render to update displayed qty values
+    const searchVal = document.getElementById('mass-barcode-search').value.toLowerCase().trim();
+    this.renderMassBarcodeList(searchVal);
+    this.updateMassSummary();
+  }
+
+  updateMassSummary() {
+    let selectedCount = 0;
+    let totalLabels = 0;
+
+    Object.values(this.massBarcodeState).forEach(s => {
+      if (s.selected) {
+        selectedCount++;
+        totalLabels += s.qty;
+      }
+    });
+
+    document.getElementById('mass-selected-count').textContent = selectedCount;
+    document.getElementById('mass-total-labels').textContent = totalLabels;
+  }
+
+  executeMassPrint() {
+    const selectedParts = [];
+    this.parts.forEach(p => {
+      const state = this.massBarcodeState[p.id];
+      if (state && state.selected) {
+        for (let i = 0; i < state.qty; i++) {
+          selectedParts.push(p);
+        }
+      }
+    });
+
+    if (selectedParts.length === 0) {
+      this.showToast("No items selected. Please check at least one item.", "warning");
+      return;
+    }
+
+    // Hide other print containers
+    document.getElementById('print-barcode-container').style.display = 'none';
+    document.getElementById('print-receipt-container').style.display = 'none';
+
+    const container = document.getElementById('print-all-barcodes-container');
+    container.innerHTML = '';
+
+    selectedParts.forEach((part, index) => {
+      const page = document.createElement('div');
+      page.className = 'barcode-page';
+
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'bp-name';
+      nameDiv.textContent = part.name;
+
+      const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svgEl.classList.add('bp-svg');
+      svgEl.id = `bp-svg-${index}`;
+
+      const priceDiv = document.createElement('div');
+      priceDiv.className = 'bp-price';
+      priceDiv.textContent = `₱${part.price.toFixed(2)}`;
+
+      page.appendChild(nameDiv);
+      page.appendChild(svgEl);
+      page.appendChild(priceDiv);
+      container.appendChild(page);
+
+      JsBarcode(`#bp-svg-${index}`, part.sku, {
+        format: "CODE128",
+        lineColor: "#000",
+        width: 1.5,
+        height: 40,
+        displayValue: true,
+        fontSize: 11,
+        textMargin: 1,
+        margin: 0
+      });
+    });
+
+    // Inject dynamic @page size (A4/Letter)
+    let style = document.getElementById('dynamic-print-style');
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'dynamic-print-style';
+      document.head.appendChild(style);
+    }
+    style.innerHTML = `@page { size: auto; margin: 0.2in; }`;
+
+    // Add class to body so CSS shows batch container only
+    document.body.classList.add('printing-all-barcodes');
+
+    // Trigger Print
+    window.print();
+
+    // Reset after print dialog closes
+    setTimeout(() => {
+      style.innerHTML = '';
+      container.innerHTML = '';
+      document.body.classList.remove('printing-all-barcodes');
+      this.closeModal('modal-mass-barcode');
+    }, 1000);
+
+    this.showToast(`Printing ${selectedParts.length} barcode labels...`, "success");
+  }
+
+  printReceipt() {
+    let style = document.getElementById('dynamic-print-style');
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'dynamic-print-style';
+      document.head.appendChild(style);
+    }
+    style.innerHTML = `@page { size: 80mm auto; margin: 0; }`;
+
+    window.print();
+    setTimeout(() => { style.innerHTML = ''; }, 1000);
+  }
+
   // Part Add/Edit Modal
   openPartModal(partId = null) {
     this.editingPartId = partId;
@@ -1247,6 +1608,12 @@ class ApexMotoPOS {
     }
 
     this.openModal('modal-part');
+
+    // Auto-focus SKU field for barcode scanner readiness
+    setTimeout(() => {
+      const skuInput = document.getElementById('part-sku');
+      if (skuInput) skuInput.focus();
+    }, 50);
   }
 
   async savePartForm() {
@@ -1834,7 +2201,7 @@ class ApexMotoPOS {
 
     // Attempt to link to existing CRM customer by name, otherwise use guest ID
     const customer = this.customers.find(c => c.name.toLowerCase() === custName.toLowerCase());
-    const finalCustId = customer ? customer.id : `guest-${Date.now()}`;
+    const finalCustId = customer ? customer.id : null;
     const finalCustName = customer ? customer.name : custName;
 
     const yearIdx = this.serviceJobs.length + 1001;

@@ -317,7 +317,7 @@ const DB = {
       items: items
         .filter(i => i.transaction_id === t.id)
         .map(i => ({
-          id:       i.part_id || i.id,
+          id:       i.part_id || 'labor',
           name:     i.name,
           quantity: i.quantity,
           price:    parseFloat(i.price),
