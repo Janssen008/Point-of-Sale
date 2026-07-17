@@ -2270,85 +2270,55 @@ class ApexMotoPOS {
   }
 
   generateReceiptHTML(tx) {
-    const padText = (left, right, length = 38) => {
-      const leftStr = String(left);
-      const rightStr = String(right);
-      const spaces = length - leftStr.length - rightStr.length;
-      return leftStr + ' '.repeat(Math.max(1, spaces)) + rightStr;
-    };
-
     const dateStr = new Date(tx.date).toLocaleString();
 
-    let itemsStr = '';
+    const S = {
+      row:    `display:flex; justify-content:space-between; margin-bottom:3px;`,
+      bold:   `font-weight:bold;`,
+      divider:`border:none; border-top:1px dashed #000; margin:7px 0;`,
+      divDbl: `border:none; border-top:3px double #000; margin:7px 0;`,
+    };
+
+    let itemsHTML = '';
     tx.items.forEach(it => {
-      const lineText = `${it.quantity}x ${it.name.substring(0, 24)}`;
-      const priceText = `₱${(it.price * it.quantity).toFixed(2)}`;
-      itemsStr += padText(lineText, priceText) + '\n';
-      // If name is long, print it on the next line
-      if (it.name.length > 24) {
-        itemsStr += `   ${it.name.substring(24, 45)}\n`;
-      }
+      itemsHTML += `<div style="${S.row}">`
+        + `<span>${it.quantity}x ${it.name}</span>`
+        + `<span>₱${(it.price * it.quantity).toFixed(2)}</span>`
+        + `</div>`;
     });
 
     const receiptHtml = `
-      <div class="receipt-header">
-        <div class="receipt-title">DIEGO'S</div>
-        <div style="font-size: 11px; margin-top: 2px;">Motorcycle Parts & Accessories</div>
-        <div style="font-size: 10px; margin-top: 4px;">brgy.ganaderia , palayan city</div>
-      </div>
-      <div class="receipt-divider"></div>
-      <div class="receipt-row">
-        <span>Receipt ID:</span>
-        <span style="font-weight:bold;">${tx.id}</span>
-      </div>
-      <div class="receipt-row">
-        <span>Date:</span>
-        <span>${dateStr}</span>
-      </div>
-      <div class="receipt-row">
-        <span>Customer:</span>
-        <span>${tx.customerName}</span>
-      </div>
-      ${tx.vehicle ? `<div class="receipt-row"><span>Vehicle:</span><span>${tx.vehicle}</span></div>` : ''}
-      <div class="receipt-divider"></div>
-      <div style="font-weight:bold; margin-bottom: 5px;">ITEMS & SERVICES:</div>
-      <pre style="font-family: inherit; font-size: inherit; white-space: pre-wrap; margin-bottom: 8px;">${itemsStr}</pre>
-      <div class="receipt-divider"></div>
-      <div class="receipt-row">
-        <span>Subtotal:</span>
-        <span>₱${tx.subtotal.toFixed(2)}</span>
-      </div>
-      ${tx.discount > 0 ? `<div class="receipt-row"><span>Discount:</span><span>-₱${tx.discount.toFixed(2)}</span></div>` : ''}
-      <div class="receipt-divider" style="border-top-style: double;"></div>
-      <div class="receipt-row receipt-row-bold" style="font-size: 13px;">
-        <span>TOTAL DUE:</span>
-        <span>₱${tx.total.toFixed(2)}</span>
-      </div>
-      <div class="receipt-divider"></div>
-      <div class="receipt-row">
-        <span>Payment Method:</span>
-        <span>${tx.paymentMethod === 'Wallet' ? 'GCash' : tx.paymentMethod}</span>
-      </div>
-      ${tx.paymentMethod === 'Wallet' && tx.referenceNo ? `
-      <div class="receipt-row">
-        <span>Reference No:</span>
-        <span>${tx.referenceNo}</span>
-      </div>
-      ` : ''}
-      ${tx.paymentMethod === 'Cash' && tx.amountTendered !== undefined && tx.amountTendered !== null ? `
-      <div class="receipt-row">
-        <span>Cash Given:</span>
-        <span>₱${tx.amountTendered.toFixed(2)}</span>
-      </div>
-      <div class="receipt-row">
-        <span>Change:</span>
-        <span>₱${tx.changeDue.toFixed(2)}</span>
-      </div>
-      ` : ''}
-      <div class="receipt-divider"></div>
-      <div style="text-align:center; font-size:10px; margin-top: 15px; font-weight: bold;">
-        RIDE SAFE • DIEGO'S SHOP
-        <div style="font-size: 9px; font-weight: normal; margin-top: 4px;">Thank you for your business!</div>
+      <div style="font-family:'Courier New',Courier,monospace; font-size:13px; color:#000; background:#fff; line-height:1.5;">
+        <div style="text-align:center; margin-bottom:12px;">
+          <div style="font-size:15px; font-weight:bold;">DIEGO'S</div>
+          <div style="font-size:11px; margin-top:2px;">Motorcycle Parts &amp; Accessories</div>
+          <div style="font-size:10px; margin-top:2px;">brgy.ganaderia , palayan city</div>
+        </div>
+        <hr style="${S.divider}">
+        <div style="${S.row}"><span>Receipt ID:</span><span style="${S.bold}">${tx.id}</span></div>
+        <div style="${S.row}"><span>Date:</span><span>${dateStr}</span></div>
+        <div style="${S.row}"><span>Customer:</span><span>${tx.customerName}</span></div>
+        ${tx.vehicle ? `<div style="${S.row}"><span>Vehicle:</span><span>${tx.vehicle}</span></div>` : ''}
+        <hr style="${S.divider}">
+        <div style="${S.bold} margin-bottom:6px;">ITEMS &amp; SERVICES:</div>
+        ${itemsHTML}
+        <hr style="${S.divider}">
+        <div style="${S.row}"><span>Subtotal:</span><span>₱${tx.subtotal.toFixed(2)}</span></div>
+        ${tx.discount > 0 ? `<div style="${S.row}"><span>Discount:</span><span>-₱${tx.discount.toFixed(2)}</span></div>` : ''}
+        <hr style="${S.divDbl}">
+        <div style="${S.row} ${S.bold} font-size:14px;"><span>TOTAL DUE:</span><span>₱${tx.total.toFixed(2)}</span></div>
+        <hr style="${S.divider}">
+        <div style="${S.row}"><span>Payment Method:</span><span>${tx.paymentMethod === 'Wallet' ? 'GCash' : tx.paymentMethod}</span></div>
+        ${tx.paymentMethod === 'Wallet' && tx.referenceNo ? `<div style="${S.row}"><span>Reference No:</span><span>${tx.referenceNo}</span></div>` : ''}
+        ${tx.paymentMethod === 'Cash' && tx.amountTendered != null ? `
+          <div style="${S.row}"><span>Cash Given:</span><span>₱${tx.amountTendered.toFixed(2)}</span></div>
+          <div style="${S.row}"><span>Change:</span><span>₱${tx.changeDue.toFixed(2)}</span></div>
+        ` : ''}
+        <hr style="${S.divider}">
+        <div style="text-align:center; margin-top:14px; font-weight:bold; font-size:11px;">
+          RIDE SAFE • DIEGO'S SHOP
+          <div style="font-size:10px; font-weight:normal; margin-top:4px; color:#333;">Thank you for your business!</div>
+        </div>
       </div>
     `;
 
@@ -2357,7 +2327,7 @@ class ApexMotoPOS {
 
     // Inject to hidden print container
     document.getElementById('print-receipt-container').innerHTML = receiptHtml;
-    
+
     return receiptHtml;
   }
 
@@ -2617,10 +2587,15 @@ class ApexMotoPOS {
     document.getElementById('manage-job-total-calc').textContent = `₱${totalEstimate.toFixed(2)}`;
   }
 
-  async addPartToJob() {
-    const partId = document.getElementById('job-parts-dropdown').value;
+  async addPartToJob(passedPartId) {
+    let partId = passedPartId;
     if (!partId) {
-      this.showToast("Select a part from the dropdown first!", "warning");
+      const dropdown = document.getElementById('job-parts-dropdown');
+      if (dropdown) partId = dropdown.value;
+    }
+
+    if (!partId) {
+      this.showToast("Select a part to allocate!", "warning");
       return;
     }
 
