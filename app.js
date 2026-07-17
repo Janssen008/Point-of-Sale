@@ -2357,6 +2357,8 @@ class ApexMotoPOS {
 
     // Inject to hidden print container
     document.getElementById('print-receipt-container').innerHTML = receiptHtml;
+    
+    return receiptHtml;
   }
 
   // --- SERVICE / WORK ORDERS INTAKE CONTROLS ---
@@ -2979,12 +2981,13 @@ class ApexMotoPOS {
       // Force sync with DB to ensure labor records and stock are up to date in local state
       await this.loadData();
       
-      this.generateReceiptHTML(transactionRecord);
+      const receiptHtml = this.generateReceiptHTML(transactionRecord);
       this.openModal('modal-receipt');
       this.broadcastToCustomerDisplay('receipt', {
         cashReceived: cashReceived,
         changeDue: changeDue,
-        transaction: transactionRecord
+        transaction: transactionRecord,
+        receiptHtml: receiptHtml
       });
       if (this.activeView === 'service') {
         this.renderServiceBoard();

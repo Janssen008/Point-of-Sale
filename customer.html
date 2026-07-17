@@ -661,32 +661,24 @@
     </div>
 
     <!-- View 3: Complete Overlay -->
-    <div class="receipt-overlay" id="receipt-overlay">
-      <div class="success-icon">
-        <svg viewBox="0 0 24 24">
-          <path d="M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z"/>
-        </svg>
+    <div class="receipt-overlay" id="receipt-overlay" style="background: rgba(10, 10, 20, 0.9);">
+      <div id="paper-receipt-container" style="
+        background: white; 
+        color: black; 
+        font-family: 'Courier New', Courier, monospace;
+        width: 320px;
+        padding: 20px 20px 30px 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        border-bottom: 4px dashed #ddd;
+        text-align: left;
+        font-size: 13px;
+        line-height: 1.4;
+      ">
+        <!-- Rendered from app.js broadcast -->
       </div>
-      <h2 class="receipt-title" id="receipt-title-text">Payment Completed!</h2>
-      <p class="receipt-message">Thank you for riding with Diego's Motorcycle Parts & Accessories. Safe travels!</p>
-
-      <div class="receipt-summary-box">
-        <div class="receipt-row">
-          <span>Transaction ID</span>
-          <span class="receipt-val" id="receipt-tx-id">TX-10001</span>
-        </div>
-        <div class="receipt-row">
-          <span>Amount Paid</span>
-          <span class="receipt-val" id="receipt-amount-paid">₱0.00</span>
-        </div>
-        <div class="receipt-row" id="receipt-row-tendered">
-          <span>Cash Tendered</span>
-          <span class="receipt-val" id="receipt-cash-received">₱0.00</span>
-        </div>
-        <div class="receipt-row" id="receipt-row-change">
-          <span>Change Returned</span>
-          <span class="receipt-val" style="color: var(--success); font-size: 1.25rem;" id="receipt-change-due">₱0.00</span>
-        </div>
+      
+      <div style="margin-top: 30px; color: #fff; font-size: 1.2rem; font-weight: bold;">
+        Thank you! Have a safe ride.
       </div>
     </div>
   </main>
@@ -747,25 +739,58 @@
         viewTransaction.classList.remove('active');
         receiptOverlay.classList.add('active');
 
-        document.getElementById('receipt-tx-id').textContent = data.transaction ? data.transaction.id : 'N/A';
-        document.getElementById('receipt-amount-paid').textContent = `₱${data.total.toFixed(2)}`;
-
-        if (data.transaction && data.transaction.paymentMethod === 'Cash') {
-          document.getElementById('receipt-row-tendered').style.display = 'flex';
-          document.getElementById('receipt-row-change').style.display = 'flex';
-          document.getElementById('receipt-cash-received').textContent = `₱${(data.cashReceived || data.total).toFixed(2)}`;
-          document.getElementById('receipt-change-due').textContent = `₱${(data.changeDue || 0).toFixed(2)}`;
-        } else {
-          document.getElementById('receipt-row-tendered').style.display = 'none';
-          document.getElementById('receipt-row-change').style.display = 'none';
+        // Render the paper receipt HTML directly
+        const paperContainer = document.getElementById('paper-receipt-container');
+        if (paperContainer) {
+          if (data.receiptHtml) {
+            paperContainer.innerHTML = data.receiptHtml;
+          } else if (data.transaction) {
+            // Fallback: build a simple receipt if no HTML was sent
+            const tx = data.transaction;
+            const dateStr = new Date(tx.date).toLocaleString();
+            let itemsHTML = '';
+            (tx.items || []).forEach(it => {
+              itemsHTML += `<div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <span>${it.quantity}x ${it.name}</span>
+                <span>₱${(it.price * it.quantity).toFixed(2)}</span>
+              </div>`;
+            });
+            paperContainer.innerHTML = `
+              <div style="text-align:center;margin-bottom:10px;">
+                <div style="font-weight:bold;font-size:15px;">DIEGO'S</div>
+                <div style="font-size:11px;">Motorcycle Parts &amp; Accessories</div>
+                <div style="font-size:10px;">brgy.ganaderia , palayan city</div>
+              </div>
+              <div style="border-top:1px dashed #000;margin:8px 0;"></div>
+              <div style="display:flex;justify-content:space-between;"><span>Receipt ID:</span><span><b>${tx.id}</b></span></div>
+              <div style="display:flex;justify-content:space-between;"><span>Date:</span><span>${dateStr}</span></div>
+              <div style="display:flex;justify-content:space-between;"><span>Customer:</span><span>${tx.customerName}</span></div>
+              <div style="border-top:1px dashed #000;margin:8px 0;"></div>
+              <div style="font-weight:bold;margin-bottom:5px;">ITEMS &amp; SERVICES:</div>
+              ${itemsHTML}
+              <div style="border-top:1px dashed #000;margin:8px 0;"></div>
+              <div style="display:flex;justify-content:space-between;"><span>Subtotal:</span><span>₱${tx.subtotal.toFixed(2)}</span></div>
+              <div style="border-top:double #000;margin:8px 0;"></div>
+              <div style="display:flex;justify-content:space-between;font-weight:bold;"><span>TOTAL DUE:</span><span>₱${tx.total.toFixed(2)}</span></div>
+              <div style="border-top:1px dashed #000;margin:8px 0;"></div>
+              <div style="display:flex;justify-content:space-between;"><span>Payment Method:</span><span>${tx.paymentMethod === 'Wallet' ? 'GCash' : tx.paymentMethod}</span></div>
+              ${tx.paymentMethod === 'Cash' ? `
+                <div style="display:flex;justify-content:space-between;"><span>Cash Given:</span><span>₱${(data.cashReceived||0).toFixed(2)}</span></div>
+                <div style="display:flex;justify-content:space-between;"><span>Change:</span><span>₱${(data.changeDue||0).toFixed(2)}</span></div>
+              ` : ''}
+              <div style="border-top:1px dashed #000;margin:8px 0;"></div>
+              <div style="text-align:center;margin-top:15px;font-weight:bold;">RIDE SAFE • DIEGO'S SHOP</div>
+              <div style="text-align:center;font-size:10px;">Thank you for your business!</div>
+            `;
+          }
         }
 
-        // Return to welcome screen after 8 seconds
+        // Return to welcome screen after 12 seconds
         receiptTimeout = setTimeout(() => {
           receiptOverlay.classList.remove('active');
           viewWelcome.classList.remove('hidden');
           viewTransaction.classList.remove('active');
-        }, 8000);
+        }, 12000);
 
         return;
       }

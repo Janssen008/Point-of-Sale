@@ -1999,3 +1999,10 @@ body.login-mode header {
 body.login-mode .main-wrapper {
   margin-left: 0 !important;
 }
+
+/* Shared Receipt Styles */
+.receipt-header { text-align: center; margin-bottom: 15px; }
+.receipt-title { font-size: 14px; font-weight: bold; text-transform: uppercase; }
+.receipt-divider { border-top: 1px dashed #000; margin: 8px 0; }
+.receipt-row { display: flex; justify-content: space-between; }
+.receipt-row-bold { font-weight: bold; }
