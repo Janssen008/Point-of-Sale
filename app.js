@@ -7,6 +7,7 @@ class ApexMotoPOS {
     this.serviceJobs = [];
     this.transactions = [];
     this.mechanics = [];
+    this.cashOuts = [];
     
     this.cart = [];
     this.selectedCustomer = null;
@@ -46,18 +47,20 @@ class ApexMotoPOS {
 
   // Load all data from Supabase
   async loadData() {
-    const [parts, customers, serviceJobs, transactions, mechanics] = await Promise.all([
+    const [parts, customers, serviceJobs, transactions, mechanics, cashOuts] = await Promise.all([
       DB.getParts(),
       DB.getCustomers(),
       DB.getServiceJobs(),
       DB.getTransactions(),
       DB.getMechanics(),
+      DB.getCashOuts(),
     ]);
     this.parts = parts;
     this.customers = customers;
     this.serviceJobs = serviceJobs;
     this.transactions = transactions;
     this.mechanics = mechanics || [];
+    this.cashOuts = cashOuts || [];
   }
 
   // Show/hide loading overlay
@@ -97,7 +100,53 @@ class ApexMotoPOS {
     // POS Search & Category Filter
     const posSearchInput = document.getElementById('pos-search-input');
     if (posSearchInput) {
-      posSearchInput.addEventListener('input', () => this.renderPOSCatalog());
+      let scannerTimeout;
+      let lastKeyTime = Date.now();
+      let isScanner = false;
+
+      posSearchInput.addEventListener('keypress', (e) => {
+        const now = Date.now();
+        if (now - lastKeyTime < 30) {
+          isScanner = true;
+        } else {
+          isScanner = false;
+        }
+        lastKeyTime = now;
+      });
+
+      posSearchInput.addEventListener('input', () => {
+        this.renderPOSCatalog();
+        
+        clearTimeout(scannerTimeout);
+        scannerTimeout = setTimeout(() => {
+          const val = posSearchInput.value.trim();
+          if (val) {
+            const part = this.parts.find(p => p.sku.toLowerCase() === val.toLowerCase());
+            if (part) {
+              this.handleScannedSKU(val);
+              posSearchInput.value = '';
+              this.renderPOSCatalog();
+            } else if (isScanner && val.length >= 5) {
+              // It's a fast-typed unknown barcode without an Enter key
+              this.handleScannedSKU(val);
+              posSearchInput.value = '';
+              this.renderPOSCatalog();
+              isScanner = false;
+            }
+          }
+        }, 150);
+      });
+      posSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const val = posSearchInput.value.trim();
+          if (val) {
+            this.handleScannedSKU(val);
+            posSearchInput.value = '';
+            this.renderPOSCatalog();
+          }
+        }
+      });
     }
     const posSearchClear = document.getElementById('pos-search-clear');
     if (posSearchClear) {
@@ -227,7 +276,7 @@ class ApexMotoPOS {
         if (radio) {
           radio.checked = true;
           this.toggleCashCalculator(radio.value);
-          this.broadcastToCustomerDisplay('checkout');
+          this.broadcastToCustomerDisplay('checkout', { paymentMethod: radio.value });
         }
       });
     });
@@ -514,6 +563,11 @@ class ApexMotoPOS {
     document.getElementById('dash-labor-breakdown').textContent =
       laborIncome > 0 ? `From ${todayTx.filter(t => (t.items||[]).some(i => i.id === 'labor')).length} job(s)` : 'No labor recorded today';
 
+    // Cash Out totals for today
+    const todayCashOuts = this.cashOuts.filter(co => new Date(co.date).toDateString() === today);
+    const totalCashOut = todayCashOuts.reduce((sum, co) => sum + co.amount, 0);
+    const netIncome = totalIncome - totalCashOut;
+
     document.getElementById('dash-today-total').textContent = `₱${totalIncome.toFixed(2)}`;
     document.getElementById('dash-total-txcount').textContent =
       `${todayTx.length} transaction${todayTx.length !== 1 ? 's' : ''} today`;
@@ -521,6 +575,19 @@ class ApexMotoPOS {
     document.getElementById('dash-active-jobs').textContent = activeJobs;
     document.getElementById('dash-low-stock-info').textContent =
       lowStock > 0 ? `${lowStock} item${lowStock > 1 ? 's' : ''} low/out of stock` : 'All stock levels OK';
+
+    // Cash Out stat card
+    const cashOutEl = document.getElementById('dash-today-cashout');
+    if (cashOutEl) cashOutEl.textContent = `₱${totalCashOut.toFixed(2)}`;
+    const cashOutCountEl = document.getElementById('dash-cashout-count');
+    if (cashOutCountEl) cashOutCountEl.textContent = `${todayCashOuts.length} withdrawal${todayCashOuts.length !== 1 ? 's' : ''} today`;
+    const netEl = document.getElementById('dash-net-income');
+    if (netEl) netEl.textContent = `₱${netIncome.toFixed(2)}`;
+    const netSubEl = document.getElementById('dash-net-income-sub');
+    if (netSubEl) netSubEl.textContent = `After ${todayCashOuts.length} cash out${todayCashOuts.length !== 1 ? 's' : ''}`;
+
+    // Render cash out breakdown
+    this.renderCashOutBreakdown(todayCashOuts);
 
 
     // 2. Weekly chart rendering (CSS flex bars)
@@ -683,6 +750,73 @@ class ApexMotoPOS {
       `;
       chartContainer.appendChild(barWrapper);
     });
+  }
+
+  renderCashOutBreakdown(todayCashOuts) {
+    const container = document.getElementById('dash-cashout-list');
+    if (!container) return;
+    container.innerHTML = '';
+    if (todayCashOuts.length === 0) {
+      container.innerHTML = `<div style="text-align:center; padding: 20px 10px; color:var(--text-muted); font-size:0.85rem;">No cash outs recorded today.</div>`;
+      return;
+    }
+    todayCashOuts.slice().reverse().forEach(co => {
+      const timeStr = new Date(co.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const div = document.createElement('div');
+      div.className = 'sale-item';
+      div.style.cssText = 'border-left: 3px solid var(--danger); padding-left: 10px;';
+      div.innerHTML = `
+        <div class="sale-desc">
+          <div class="sale-name">${co.reason}</div>
+          <div class="sale-meta">${co.id} • ${timeStr}${co.notes ? ' — ' + co.notes : ''}</div>
+        </div>
+        <div class="sale-amount" style="color:var(--danger);">-₱${co.amount.toFixed(2)}</div>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  openCashOutModal() {
+    document.getElementById('cashout-amount').value = '';
+    document.getElementById('cashout-reason').value = '';
+    document.getElementById('cashout-notes').value = '';
+    this.openModal('modal-cashout');
+    setTimeout(() => document.getElementById('cashout-amount').focus(), 150);
+  }
+
+  async submitCashOut() {
+    const amount = parseFloat(document.getElementById('cashout-amount').value);
+    const reason = document.getElementById('cashout-reason').value.trim();
+    const notes = document.getElementById('cashout-notes').value.trim();
+
+    if (!amount || amount <= 0) {
+      this.showToast('Please enter a valid cash out amount.', 'warning');
+      return;
+    }
+    if (!reason) {
+      this.showToast('Please select or enter a reason for cash out.', 'warning');
+      return;
+    }
+
+    const entry = {
+      id: 'CO-' + Date.now(),
+      amount,
+      reason,
+      notes,
+      date: new Date().toISOString(),
+    };
+
+    try {
+      const savedId = await DB.createCashOut(entry);
+      entry.id = savedId || entry.id;
+      this.cashOuts.push(entry);
+      this.closeModal('modal-cashout');
+      this.renderDashboard();
+      this.showToast(`Cash out of ₱${amount.toFixed(2)} recorded.`, 'success');
+    } catch (err) {
+      console.error(err);
+      this.showToast('Failed to save cash out: ' + err.message, 'danger');
+    }
   }
 
   // --- POS Point of Sale Catalog ---
@@ -2110,13 +2244,17 @@ class ApexMotoPOS {
     this.toggleCashCalculator('Cash');
 
     this.openModal('modal-checkout');
-    this.broadcastToCustomerDisplay('checkout');
+    this.broadcastToCustomerDisplay('checkout', { paymentMethod: 'Cash' });
   }
 
   toggleCashCalculator(method) {
     const calc = document.getElementById('cash-calculator');
+    const gcashRef = document.getElementById('gcash-reference-container');
     if (calc) {
       calc.style.display = (method === 'Cash') ? 'block' : 'none';
+    }
+    if (gcashRef) {
+      gcashRef.style.display = (method === 'Wallet') ? 'block' : 'none';
     }
   }
 
@@ -2189,8 +2327,14 @@ class ApexMotoPOS {
       <div class="receipt-divider"></div>
       <div class="receipt-row">
         <span>Payment Method:</span>
-        <span>${tx.paymentMethod}</span>
+        <span>${tx.paymentMethod === 'Wallet' ? 'GCash' : tx.paymentMethod}</span>
       </div>
+      ${tx.paymentMethod === 'Wallet' && tx.referenceNo ? `
+      <div class="receipt-row">
+        <span>Reference No:</span>
+        <span>${tx.referenceNo}</span>
+      </div>
+      ` : ''}
       ${tx.paymentMethod === 'Cash' && tx.amountTendered !== undefined && tx.amountTendered !== null ? `
       <div class="receipt-row">
         <span>Cash Given:</span>
@@ -2681,6 +2825,7 @@ class ApexMotoPOS {
 
     let cashReceived = null;
     let changeDue = null;
+    let referenceNo = null;
 
     if (paymentMethod === 'Cash') {
       cashReceived = parseFloat(document.getElementById('cash-received').value) || 0;
@@ -2689,6 +2834,12 @@ class ApexMotoPOS {
         return;
       }
       changeDue = cashReceived - totalVal;
+    } else if (paymentMethod === 'Wallet') {
+      referenceNo = document.getElementById('gcash-reference').value.trim();
+      if (!referenceNo) {
+        this.showToast("GCash Reference Number is required!", "warning");
+        return;
+      }
     }
 
     if (paymentMethod === 'Debt' && !this.selectedCustomer) {
@@ -2732,7 +2883,7 @@ class ApexMotoPOS {
         customerId: job.customerId, customerName: job.customerName,
         vehicle: job.vehicle, items: itemsRecord,
         subtotal: laborSubtotal, discount: 0.00, total: totalVal, paymentMethod,
-        amountTendered: cashReceived, changeDue: changeDue,
+        amountTendered: cashReceived, changeDue: changeDue, referenceNo: referenceNo,
         date: new Date().toISOString()
       };
 
@@ -2785,7 +2936,7 @@ class ApexMotoPOS {
         customerName: this.selectedCustomer ? this.selectedCustomer.name : "Walk-in Customer",
         items: itemsRecord, subtotal: laborSubtotal, discount,
         total: totalVal, paymentMethod, 
-        amountTendered: cashReceived, changeDue: changeDue, date: new Date().toISOString()
+        amountTendered: cashReceived, changeDue: changeDue, referenceNo: referenceNo, date: new Date().toISOString()
       };
 
       // --- AUTO-RECORD LABOR TO MECHANIC ---
@@ -2996,14 +3147,57 @@ class ApexMotoPOS {
     });
   }
 
-  handleScannedSKU(sku) {
+  async handleScannedSKU(sku) {
     console.log("Barcode wedge read SKU:", sku);
     const part = this.parts.find(p => p.sku.toLowerCase() === sku.toLowerCase());
     if (part) {
       this.addToCart(part.id);
       this.showToast(`Scanned: ${part.sku}`, "success");
     } else {
-      this.showToast(`Unknown product code: ${sku}`, "warning");
+      this.showToast(`Unknown product code: ${sku}. Initiating auto-add...`, "info");
+      this.promptAddNewItem(sku);
+    }
+  }
+
+  async promptAddNewItem(sku) {
+    this.openPartModal(null);
+    
+    const skuInput = document.getElementById('part-sku');
+    const nameInput = document.getElementById('part-name');
+    
+    if (skuInput) skuInput.value = sku;
+    if (nameInput) {
+      nameInput.value = 'Searching for product info...';
+      nameInput.disabled = true;
+    }
+
+    try {
+      const response = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${sku}`);
+      const data = await response.json();
+
+      if (nameInput) nameInput.disabled = false;
+      
+      if (data && data.items && data.items.length > 0) {
+        const item = data.items[0];
+        if (nameInput) nameInput.value = item.title || item.description || '';
+        this.showToast(`Found product: ${nameInput.value.substring(0, 20)}...`, "success");
+        setTimeout(() => {
+          const costInput = document.getElementById('part-cost');
+          if (costInput) costInput.focus();
+        }, 100);
+      } else {
+        if (nameInput) nameInput.value = '';
+        this.showToast("Product not found in public database. Please enter manually.", "warning");
+        setTimeout(() => { if (nameInput) nameInput.focus(); }, 100);
+      }
+    } catch (err) {
+      console.error("Barcode API lookup failed:", err);
+      if (nameInput) {
+        nameInput.disabled = false;
+        nameInput.value = '';
+      }
+      this.showToast("Could not reach barcode database.", "warning");
+      setTimeout(() => { if (nameInput) nameInput.focus(); }, 100);
     }
   }
 

@@ -434,5 +434,42 @@ const DB = {
       .delete()
       .eq('id', recordId);
     if (error) throw error;
-  }
+  },
+
+  // ─── CASH OUTS ───────────────────────────────────────────────────────
+
+  async getCashOuts() {
+    const { data, error } = await _supabase
+      .from('cash_outs')
+      .select('*')
+      .order('date', { ascending: false });
+    if (error) {
+      // Table might not exist yet; return empty gracefully
+      console.warn('[DB] cash_outs table not found or error:', error.message);
+      return [];
+    }
+    return data.map(r => ({
+      id:     r.id,
+      amount: parseFloat(r.amount),
+      reason: r.reason,
+      notes:  r.notes || '',
+      date:   r.date,
+    }));
+  },
+
+  async createCashOut(entry) {
+    const { data, error } = await _supabase
+      .from('cash_outs')
+      .insert({
+        amount: entry.amount,
+        reason: entry.reason,
+        notes:  entry.notes || '',
+        date:   entry.date,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data.id;
+  },
 };
+

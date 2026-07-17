@@ -260,8 +260,26 @@ CREATE POLICY "anon_all_mechanics"         ON mechanics         FOR ALL TO anon 
 CREATE POLICY "anon_all_labor_records"     ON labor_records     FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- =====================================================================
+-- TABLE: cash_outs
+-- Records of cash withdrawals made by the owner from daily sales
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS cash_outs (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  amount     NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+  reason     TEXT NOT NULL,
+  notes      TEXT,
+  date       TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_cash_outs_date ON cash_outs(date DESC);
+
+ALTER TABLE cash_outs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "anon_all_cash_outs" ON cash_outs FOR ALL TO anon USING (true) WITH CHECK (true);
+
+-- =====================================================================
 -- All done!
 -- Tables: parts, customers, vehicles, service_jobs,
 --         service_job_parts, transactions, transaction_items,
---         mechanics, labor_records
+--         mechanics, labor_records, cash_outs
 -- =====================================================================
