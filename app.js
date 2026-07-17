@@ -1441,7 +1441,7 @@ class ApexMotoPOS {
         this.broadcastToCustomerDisplay(this.cart.length > 0 ? 'cart-updating' : 'welcome');
       }, 1000);
     } else {
-      this.showToast("Pop-up blocker is preventing the 2nd monitor window from opening. Please allow popups.", "warning");
+      this.showToast("Pop-up blocked. <a href='customer.html' target='customerDisplayWindow' style='color:#00ffff; text-decoration:underline;'>Click here to open the 2nd Monitor Display</a>", "warning");
     }
   }
 

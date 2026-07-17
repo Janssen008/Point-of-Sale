@@ -292,10 +292,10 @@
                   <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M2,12A10,10 0 1,0 12,2A10,10 0 0,0 2,12M15.6,13.7L14.7,14.6L11.5,11.5V7H12.8V11L15.6,13.7Z"/></svg>
                   Recall (<span id="hold-time"></span>)
                 </button>
-                <button class="btn btn-secondary btn-sm" onclick="app.openCustomerDisplay()" title="Open Customer 2nd Monitor Display">
+                <a href="customer.html" target="customerDisplayWindow" class="btn btn-secondary btn-sm" onclick="setTimeout(() => app.broadcastToCustomerDisplay(app.cart.length > 0 ? 'cart-updating' : 'welcome'), 1500)" title="Open Customer 2nd Monitor Display" style="text-decoration: none;">
                   <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="margin-right: 4px;"><path d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"/></svg>
                   2nd Monitor
-                </button>
+                </a>
               </div>
             </div>
             
