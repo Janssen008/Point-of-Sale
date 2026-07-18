@@ -5,9 +5,11 @@ class ApexMotoPOS {
     this.parts = [];
     this.customers = [];
     this.serviceJobs = [];
-    this.transactions = [];
     this.mechanics = [];
+    this.laborRecords = [];
+    this.transactions = [];
     this.cashOuts = [];
+    this.entryCapitals = [];
     
     this.cart = [];
     this.selectedCustomer = null;
@@ -47,20 +49,22 @@ class ApexMotoPOS {
 
   // Load all data from Supabase
   async loadData() {
-    const [parts, customers, serviceJobs, transactions, mechanics, cashOuts] = await Promise.all([
+    const [parts, customers, serviceJobs, transactions, mechanics, cashOuts, entryCapitals] = await Promise.all([
       DB.getParts(),
       DB.getCustomers(),
       DB.getServiceJobs(),
       DB.getTransactions(),
       DB.getMechanics(),
       DB.getCashOuts(),
+      DB.getEntryCapitals(),
     ]);
-    this.parts = parts;
-    this.customers = customers;
-    this.serviceJobs = serviceJobs;
-    this.transactions = transactions;
+    this.parts = parts || [];
+    this.customers = customers || [];
+    this.serviceJobs = serviceJobs || [];
+    this.transactions = transactions || [];
     this.mechanics = mechanics || [];
     this.cashOuts = cashOuts || [];
+    this.entryCapitals = entryCapitals || [];
   }
 
   // Show/hide loading overlay
@@ -409,7 +413,7 @@ class ApexMotoPOS {
     document.getElementById('current-user-name').textContent = this.currentUser.name;
 
     // Apply RBAC UI Restrictions
-    const restrictedItems = document.querySelectorAll('.sidebar-menu .menu-item[data-view="dashboard"], .sidebar-menu .menu-item[data-view="inventory"], .sidebar-menu .menu-item[data-view="mechanics"], .sidebar-menu .menu-item[data-view="sales-history"]');
+    const restrictedItems = document.querySelectorAll('.sidebar-menu .menu-item[data-view="dashboard"], .sidebar-menu .menu-item[data-view="inventory"], .sidebar-menu .menu-item[data-view="mechanics"], .sidebar-menu .menu-item[data-view="sales-history"], .sidebar-menu .menu-item[data-view="reports"]');
     if (this.currentUser.role === 'staff') {
       restrictedItems.forEach(item => item.style.display = 'none');
       this.switchView('pos'); // Default for staff
@@ -444,7 +448,7 @@ class ApexMotoPOS {
       
       // RBAC Check
       if (this.currentUser && this.currentUser.role === 'staff') {
-        const restrictedViews = ['dashboard', 'inventory', 'mechanics', 'sales-history'];
+        const restrictedViews = ['dashboard', 'inventory', 'mechanics', 'sales-history', 'reports'];
         if (restrictedViews.includes(viewId)) {
           this.showToast("Access Denied: Staff cannot access this module.", "danger");
           return;
@@ -481,7 +485,8 @@ class ApexMotoPOS {
         'sales-history': "Sales History & Past Receipts",
         inventory: "Parts Inventory Database",
         customers: "Customer CRM & History",
-        mechanics: "Mechanics & Labor"
+        mechanics: "Mechanics & Labor",
+        reports: "Sales Reports"
       };
       titleEl.textContent = titles[viewId] || "Management Panel";
     }
@@ -523,6 +528,9 @@ class ApexMotoPOS {
       case 'mechanics':
         this.renderMechanicList();
         break;
+      case 'reports':
+        this.renderReports();
+        break;
     }
   }
 
@@ -539,12 +547,24 @@ class ApexMotoPOS {
     // --- Sales Income: sum of all item prices EXCLUDING labor line items ---
     let salesIncome = 0;
     let laborIncome = 0;
+    let markupIncome = 0;
+    let totalCostOfGoods = 0;
+    let markupItemCount = 0;
     todayTx.forEach(tx => {
       (tx.items || []).forEach(item => {
         if (item.id === 'labor') {
           laborIncome += item.price * (item.quantity || 1);
         } else {
-          salesIncome += item.price * (item.quantity || 1);
+          const qty = item.quantity || 1;
+          salesIncome += item.price * qty;
+          // Look up cost price from parts catalog
+          const part = this.parts.find(p => p.id === item.id);
+          if (part && part.cost != null) {
+            totalCostOfGoods += part.cost * qty;
+            const markup = (item.price - part.cost) * qty;
+            markupIncome += markup;
+            markupItemCount++;
+          }
         }
       });
     });
@@ -586,8 +606,34 @@ class ApexMotoPOS {
     const netSubEl = document.getElementById('dash-net-income-sub');
     if (netSubEl) netSubEl.textContent = `After ${todayCashOuts.length} cash out${todayCashOuts.length !== 1 ? 's' : ''}`;
 
+    // Markup Income stat card (selling price - cost price) * qty
+    const markupEl = document.getElementById('dash-markup-income');
+    const markupInfoEl = document.getElementById('dash-markup-info');
+    if (markupEl) markupEl.textContent = `₱${markupIncome.toFixed(2)}`;
+    if (markupInfoEl) {
+      if (markupItemCount > 0) {
+        markupInfoEl.textContent = `${markupItemCount} item(s) sold · Cost: ₱${totalCostOfGoods.toFixed(2)}`;
+      } else {
+        markupInfoEl.textContent = 'No part cost data available';
+      }
+    }
+
     // Render cash out breakdown
     this.renderCashOutBreakdown(todayCashOuts);
+
+    // Render Entry Capital
+    const todayEntryCapitals = this.entryCapitals.filter(ec => new Date(ec.date).toDateString() === today);
+    const totalEntryCapital = todayEntryCapitals.reduce((sum, ec) => sum + ec.amount, 0);
+    const ecDisplay = document.getElementById('dash-entry-capital-display');
+    const ecValue = document.getElementById('dash-entry-capital-value');
+    if (ecDisplay && ecValue) {
+      if (todayEntryCapitals.length > 0) {
+        ecDisplay.style.display = 'block';
+        ecValue.textContent = totalEntryCapital.toFixed(2);
+      } else {
+        ecDisplay.style.display = 'none';
+      }
+    }
 
 
     // 2. Weekly chart rendering (CSS flex bars)
@@ -816,6 +862,252 @@ class ApexMotoPOS {
     } catch (err) {
       console.error(err);
       this.showToast('Failed to save cash out: ' + err.message, 'danger');
+    }
+  }
+
+  openEntryCapitalModal() {
+    document.getElementById('entry-capital-amount').value = '';
+    this.openModal('modal-entry-capital');
+    setTimeout(() => document.getElementById('entry-capital-amount').focus(), 150);
+  }
+
+  async submitEntryCapital() {
+    const amount = parseFloat(document.getElementById('entry-capital-amount').value);
+
+    if (!amount || amount < 0) {
+      this.showToast('Please enter a valid amount.', 'warning');
+      return;
+    }
+
+    const entry = {
+      id: 'EC-' + Date.now(),
+      amount,
+      date: new Date().toISOString(),
+    };
+
+    try {
+      const savedId = await DB.createEntryCapital(entry);
+      entry.id = savedId || entry.id;
+      this.entryCapitals.push(entry);
+      this.closeModal('modal-entry-capital');
+      this.renderDashboard();
+      this.showToast(`Entry capital of ₱${amount.toFixed(2)} recorded.`, 'success');
+    } catch (err) {
+      console.error(err);
+      this.showToast('Failed to save entry capital: ' + err.message, 'danger');
+    }
+  }
+
+  // --- REPORTS ---
+  renderReports() {
+    // Determine selected dates or default to today if blank
+    const todayStr = new Date().toISOString().split('T')[0];
+    const startInput = document.getElementById('report-start-date').value || todayStr;
+    const endInput = document.getElementById('report-end-date').value || todayStr;
+    
+    // Convert to dates covering full day
+    const start = new Date(startInput);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endInput);
+    end.setHours(23, 59, 59, 999);
+
+    // Filter Transactions
+    const periodTx = this.transactions.filter(t => {
+      const d = new Date(t.date);
+      return d >= start && d <= end;
+    });
+
+    let grossSales = 0;
+    let totalLabor = 0;
+
+    const tbody = document.getElementById('report-transactions-table');
+    if (tbody) {
+      tbody.innerHTML = '';
+      if (periodTx.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">No transactions found for this period.</td></tr>';
+      } else {
+        periodTx.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
+          const dt = new Date(t.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${dt}</td>
+            <td style="font-family: monospace;">${t.id}</td>
+            <td><span class="badge ${t.type === 'Retail' ? 'badge-info' : 'badge-warning'}">${t.type}</span></td>
+            <td>${t.customerName || 'Walk-in'}</td>
+            <td style="font-weight: 600;">₱${t.total.toFixed(2)}</td>
+            <td>${t.paymentMethod}</td>
+          `;
+          tbody.appendChild(tr);
+
+          // Calculate metrics
+          t.items.forEach(item => {
+            if (item.id === 'labor') {
+              totalLabor += item.price;
+            } else {
+              grossSales += item.price * (item.quantity || 1);
+            }
+          });
+        });
+      }
+    }
+
+    // Filter Cash Outs
+    const periodCashOuts = this.cashOuts.filter(c => {
+      const d = new Date(c.date);
+      return d >= start && d <= end;
+    });
+    const totalCashOut = periodCashOuts.reduce((sum, c) => sum + c.amount, 0);
+
+    const netTotal = (grossSales + totalLabor) - totalCashOut;
+
+    // Update DOM
+    if (document.getElementById('report-gross-sales')) document.getElementById('report-gross-sales').textContent = `₱${grossSales.toFixed(2)}`;
+    if (document.getElementById('report-total-labor')) document.getElementById('report-total-labor').textContent = `₱${totalLabor.toFixed(2)}`;
+    if (document.getElementById('report-total-cashouts')) document.getElementById('report-total-cashouts').textContent = `₱${totalCashOut.toFixed(2)}`;
+    if (document.getElementById('report-net-total')) document.getElementById('report-net-total').textContent = `₱${netTotal.toFixed(2)}`;
+  }
+
+  printSalesReport() {
+    // Clone the report view to modify for printing
+    const reportNode = document.getElementById('view-reports').cloneNode(true);
+    
+    // Remove the Danger Zone card (last card)
+    const cards = reportNode.querySelectorAll('.card');
+    if (cards.length > 0) {
+      const lastCard = cards[cards.length - 1];
+      if (lastCard.innerHTML.includes('Danger Zone')) {
+        lastCard.remove();
+      }
+    }
+
+    // Get the date range text
+    const todayStr = new Date().toISOString().split('T')[0];
+    const startInput = document.getElementById('report-start-date').value || todayStr;
+    const endInput = document.getElementById('report-end-date').value || todayStr;
+    
+    // Replace the top header and filter row with a clean print header
+    const topRow = reportNode.querySelector('div[style*="justify-content: space-between"]');
+    if (topRow) {
+      const cleanHeader = document.createElement('div');
+      cleanHeader.style.marginBottom = '24px';
+      cleanHeader.innerHTML = `
+        <h2 style="margin: 0 0 8px 0;">Sales Report</h2>
+        <div style="font-size: 0.95rem; color: #555;">Period: ${startInput} to ${endInput}</div>
+      `;
+      topRow.parentNode.replaceChild(cleanHeader, topRow);
+    }
+
+    const reportHTML = reportNode.innerHTML;
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Sales Report</title>
+          <style>
+            body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; color: #333; }
+            h2 { margin-top: 0; }
+            .grid-cols-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+            .card { border: 1px solid #ddd; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
+            .stat-label { font-size: 0.85rem; color: #666; }
+            .stat-value { font-size: 1.5rem; font-weight: 700; margin-top: 4px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.9rem; }
+            th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+            th { background: #f8f9fa; font-weight: 600; }
+            .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+            .badge-info { background: #e0f7fa; color: #00838f; }
+            .badge-warning { background: #fff8e1; color: #ff8f00; }
+            @media print {
+              body { padding: 0; }
+              .card { border: none; padding: 0; box-shadow: none; }
+            }
+          </style>
+        </head>
+        <body>
+          ${reportHTML}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  }
+
+  exportSalesCSV() {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const startInput = document.getElementById('report-start-date').value || todayStr;
+    const endInput = document.getElementById('report-end-date').value || todayStr;
+    const start = new Date(startInput); start.setHours(0,0,0,0);
+    const end = new Date(endInput); end.setHours(23,59,59,999);
+
+    const periodTx = this.transactions.filter(t => {
+      const d = new Date(t.date);
+      return d >= start && d <= end;
+    }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    if (periodTx.length === 0) {
+      this.showToast('No data to export for this period.', 'warning');
+      return;
+    }
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Date,Transaction ID,Type,Customer,Payment Method,Total Amount\n";
+
+    periodTx.forEach(t => {
+      const dateStr = new Date(t.date).toLocaleString().replace(/,/g, '');
+      const type = t.type;
+      const cust = (t.customerName || 'Walk-in').replace(/,/g, '');
+      const method = t.paymentMethod;
+      const total = t.total.toFixed(2);
+      csvContent += `${dateStr},${t.id},${type},${cust},${method},${total}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `sales_report_${startInput}_to_${endInput}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  async clearAllSalesData() {
+    const confirmation = confirm("WARNING: This will permanently delete ALL completed sales transactions, cash outs, and entry capitals.\nAre you sure you want to proceed?");
+    if (!confirmation) return;
+    
+    // Additional confirmation due to destructive nature
+    const doubleCheck = confirm("This action CANNOT be undone. Click OK to wipe all sales data.");
+    if (!doubleCheck) return;
+
+    // Authentication check
+    const pin = prompt("Authentication Required: Please enter the Admin PIN to authorize data deletion:");
+    if (pin !== '1234') {
+      this.showToast("Incorrect PIN. Data deletion cancelled.", "danger");
+      return;
+    }
+
+    this.showLoadingOverlay(true);
+    try {
+      await DB.deleteAllSalesData();
+      
+      // Clear local state
+      this.transactions = [];
+      this.cashOuts = [];
+      this.entryCapitals = [];
+      
+      this.showLoadingOverlay(false);
+      this.showToast('All sales data has been permanently deleted.', 'success');
+      
+      // Always re-render dashboard (keeps metrics live) and the current view
+      this.renderDashboard();
+      this.refreshViewData(this.activeView);
+    } catch (err) {
+      this.showLoadingOverlay(false);
+      console.error(err);
+      this.showToast('Failed to clear sales data: ' + err.message, 'danger');
     }
   }
 
@@ -1124,7 +1416,7 @@ class ApexMotoPOS {
     }
 
     filtered.forEach(p => {
-      const markup = p.cost > 0 ? ((p.price - p.cost) / p.cost) * 100 : 0;
+      const markupVal = p.price - p.cost;
       
       const isOut = p.stock === 0;
       const isLow = p.stock <= p.minStock && p.stock > 0;
@@ -1140,7 +1432,7 @@ class ApexMotoPOS {
         <td>${p.category}</td>
         <td style="text-align:right;">₱${p.cost.toFixed(2)}</td>
         <td style="text-align:right; font-weight:600; color:var(--accent);">₱${p.price.toFixed(2)}</td>
-        <td style="text-align:right; color:var(--text-secondary);">${markup.toFixed(0)}%</td>
+        <td style="text-align:right; color:var(--text-secondary);">₱${markupVal.toFixed(2)}</td>
         <td style="text-align:center;">${stockCell}</td>
         <td style="text-align:center; color:var(--text-secondary);">${p.minStock} units</td>
         <td>
@@ -1405,7 +1697,7 @@ class ApexMotoPOS {
           <div class="card-title" style="font-size:0.95rem; margin-bottom:12px;">Customer Actions</div>
           <div style="display:flex; flex-direction:column; gap:10px;">
             <button class="btn btn-secondary btn-sm" onclick="app.openCustomerModalForEdit('${cust.id}')">Edit Profile Information</button>
-            <button class="btn btn-primary btn-sm" onclick="app.createServiceJobForCRM('${cust.id}')">Intake this Customer (Create Work Order)</button>
+            ${cust.debt > 0 ? `<button class="btn btn-warning btn-sm" onclick="app.settleDebtFromCRM('${cust.id}')" style="background:var(--warning); color:#000; font-weight:700;">Settle Debt (₱${cust.debt.toFixed(2)})</button>` : ''}
             <button class="btn btn-success btn-sm" onclick="app.attachCustomerToCartFromCRM('${cust.id}')">Attach to POS checkout</button>
             <button class="btn btn-danger btn-sm" onclick="app.deleteCustomer('${cust.id}')">Delete Customer Record</button>
           </div>
@@ -1796,10 +2088,13 @@ class ApexMotoPOS {
         document.getElementById('part-price').value = part.price;
         document.getElementById('part-stock').value = part.stock;
         document.getElementById('part-min-stock').value = part.minStock;
+        document.getElementById('part-alt-barcodes').value =
+          Array.isArray(part.altBarcodes) ? part.altBarcodes.join(', ') : '';
       }
     } else {
       titleEl.textContent = "Add Part Record";
       document.getElementById('part-id').value = '';
+      document.getElementById('part-alt-barcodes').value = '';
     }
 
     this.openModal('modal-part');
@@ -1820,12 +2115,29 @@ class ApexMotoPOS {
     const stock = parseInt(document.getElementById('part-stock').value, 10) || 0;
     const minStock = parseInt(document.getElementById('part-min-stock').value, 10) || 0;
 
+    // Parse alternate barcodes: split by comma, trim whitespace, remove empties
+    const altBarcodesRaw = document.getElementById('part-alt-barcodes').value || '';
+    const altBarcodes = altBarcodesRaw
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    // Validate: alt barcode must not clash with another part's primary SKU
+    const clashPart = this.parts.find(p =>
+      p.id !== this.editingPartId &&
+      altBarcodes.some(b => b.toLowerCase() === p.sku.toLowerCase())
+    );
+    if (clashPart) {
+      this.showToast(`Barcode clash: "${clashPart.sku}" is already the primary SKU of "${clashPart.name}".`, 'warning');
+      return;
+    }
+
     if (!sku || !name || !category) {
       this.showToast("Please fill in SKU, Name and Category", "warning");
       return;
     }
 
-    const partData = { sku, name, category, cost, price, stock, minStock };
+    const partData = { sku, name, category, cost, price, stock, minStock, altBarcodes };
     if (this.editingPartId) partData.id = this.editingPartId;
 
     try {
@@ -2173,6 +2485,107 @@ class ApexMotoPOS {
       this.switchView('pos');
       this.renderPOSCart();
       this.showToast(`Customer attached to order`, "success");
+    }
+  }
+
+  settleDebtFromCRM(customerId) {
+    const cust = this.customers.find(c => c.id === customerId);
+    if (!cust) return;
+
+    const debtTx = this.transactions.filter(t => t.customerId === customerId && t.paymentMethod === 'Debt');
+    if (debtTx.length === 0) {
+      this.showToast('No outstanding debt found for this customer.', 'info');
+      return;
+    }
+
+    // Store for confirmSettleDebt
+    this._settleDebtCustomerId = customerId;
+    this._settleDebtTxIds = debtTx.map(t => t.id);
+
+    const totalDebt = debtTx.reduce((sum, t) => sum + t.total, 0);
+
+    // Populate customer info
+    document.getElementById('settle-debt-customer-info').innerHTML = `
+      <div style="font-weight:700; font-size:1rem; margin-bottom:4px;">${cust.name}</div>
+      <div style="font-size:0.85rem; color:var(--text-secondary);">${cust.phone || ''} &nbsp;|&nbsp; ${debtTx.length} unpaid invoice(s)</div>
+      <div style="margin-top:6px; font-weight:700; color:var(--danger);">Outstanding: ₱${totalDebt.toFixed(2)}</div>
+    `;
+
+    // Populate items list
+    let itemsHtml = '';
+    debtTx.forEach(tx => {
+      itemsHtml += `<div style="background:var(--bg-surface); border:1px solid rgba(255,69,58,0.25); border-radius:var(--radius-sm); padding:10px;">
+        <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-secondary); margin-bottom:6px;">
+          <span>${new Date(tx.date).toLocaleDateString()} · ${tx.id}</span>
+          <strong style="color:var(--danger);">₱${tx.total.toFixed(2)}</strong>
+        </div>
+        <div style="font-size:0.82rem; color:var(--text-primary);">
+          ${(tx.items || []).map(it => `${it.quantity}× ${it.name}`).join(', ')}
+        </div>
+      </div>`;
+    });
+    document.getElementById('settle-debt-items-list').innerHTML = itemsHtml;
+
+    // Set total
+    document.getElementById('settle-debt-total').textContent = `₱${totalDebt.toFixed(2)}`;
+    document.getElementById('settle-debt-tendered').value = '';
+    document.getElementById('settle-debt-change').textContent = '₱0.00';
+    document.getElementById('settle-debt-method').value = 'Cash';
+
+    this.openModal('modal-settle-debt');
+  }
+
+  calcSettleChange() {
+    const debtTx = (this._settleDebtTxIds || []).map(id => this.transactions.find(t => t.id === id)).filter(Boolean);
+    const total = debtTx.reduce((sum, t) => sum + t.total, 0);
+    const tendered = parseFloat(document.getElementById('settle-debt-tendered').value) || 0;
+    const change = Math.max(0, tendered - total);
+    document.getElementById('settle-debt-change').textContent = `₱${change.toFixed(2)}`;
+  }
+
+  async confirmSettleDebt() {
+    const customerId = this._settleDebtCustomerId;
+    const txIds = this._settleDebtTxIds || [];
+
+    if (!customerId || txIds.length === 0) {
+      this.showToast('Debug: missing customer or txIds — reopen the Settle Debt modal', 'danger');
+      return;
+    }
+
+    const cust = this.customers.find(c => c.id === customerId);
+    const method = document.getElementById('settle-debt-method').value;
+
+    this.showLoadingOverlay(true);
+    try {
+      // 1. Update each debt transaction's payment_method in Supabase
+      for (const id of txIds) {
+        await DB.updateTransactionPaymentMethod(id, method);
+      }
+
+      // 2. Clear the customer's outstanding_debt in Supabase directly
+      await DB.clearCustomerDebt(customerId);
+
+      // 3. Update local state
+      txIds.forEach(id => {
+        const tx = this.transactions.find(t => t.id === id);
+        if (tx) tx.paymentMethod = method;
+      });
+      if (cust) cust.debt = 0;
+
+      this.showLoadingOverlay(false);
+      this.closeModal('modal-settle-debt');
+      this.showToast(`Debt settled for ${cust?.name || 'customer'}! Recorded as ${method}.`, 'success');
+
+      // 4. Refresh views
+      if (this.activeView === 'customers') {
+        this.renderCustomerCRMDetailPane(customerId);
+        this.renderCustomerCRMList();
+      }
+      this.renderDashboard();
+    } catch (err) {
+      this.showLoadingOverlay(false);
+      console.error('confirmSettleDebt error:', err);
+      this.showToast('Error: ' + (err.message || JSON.stringify(err)), 'danger');
     }
   }
 
@@ -3127,13 +3540,76 @@ class ApexMotoPOS {
 
   async handleScannedSKU(sku) {
     console.log("Barcode wedge read SKU:", sku);
-    const part = this.parts.find(p => p.sku.toLowerCase() === sku.toLowerCase());
+
+    // First: check primary SKU, then check altBarcodes aliases
+    const part = this.parts.find(p =>
+      p.sku.toLowerCase() === sku.toLowerCase() ||
+      (p.altBarcodes || []).some(b => b.toLowerCase() === sku.toLowerCase())
+    );
+
     if (part) {
+      // If matched via alias, show which item it resolved to
+      const matchedViaAlias = p =>
+        p.sku.toLowerCase() !== sku.toLowerCase() &&
+        (p.altBarcodes || []).some(b => b.toLowerCase() === sku.toLowerCase());
+      const label = matchedViaAlias(part)
+        ? `Scanned alias → ${part.name}`
+        : `Scanned: ${part.sku}`;
       this.addToCart(part.id);
-      this.showToast(`Scanned: ${part.sku}`, "success");
+      this.showToast(label, "success");
     } else {
+      // If the modal is open in captureNextScanToAltBarcodes mode, intercept
+      if (this._capturingAltBarcode) {
+        this._appendAltBarcode(sku);
+        return;
+      }
       this.showToast(`Unknown product code: ${sku}. Initiating auto-add...`, "info");
       this.promptAddNewItem(sku);
+    }
+  }
+
+  // Triggered by "Scan to Add" button in the part modal
+  captureNextScanToAltBarcodes() {
+    this._capturingAltBarcode = true;
+    const btn = document.getElementById('btn-capture-barcode');
+    if (btn) {
+      btn.textContent = '⏳ Waiting for scan...';
+      btn.disabled = true;
+      btn.style.opacity = '0.7';
+    }
+    this.showToast('Point scanner at barcode now...', 'info');
+    // Auto-cancel after 10 seconds
+    this._captureBarcodeTimeout = setTimeout(() => {
+      this._cancelAltBarcodeCapture();
+      this.showToast('Scan capture timed out.', 'warning');
+    }, 10000);
+  }
+
+  _appendAltBarcode(sku) {
+    this._capturingAltBarcode = false;
+    clearTimeout(this._captureBarcodeTimeout);
+    const input = document.getElementById('part-alt-barcodes');
+    if (input) {
+      const existing = input.value.trim();
+      input.value = existing ? `${existing}, ${sku}` : sku;
+    }
+    const btn = document.getElementById('btn-capture-barcode');
+    if (btn) {
+      btn.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M2 4h2v16H2zm3 0h1v16H5zm2 0h2v16H7zm3 0h1v16h-1zm2 0h2v16h-2zm3 0h1v16h-1zm2 0h1v16h-1zm2 0h2v16h-2zM1 20h22v2H1zm0-18h22v2H1z"/></svg> Scan to Add`;
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
+    this.showToast(`Alias barcode captured: ${sku}`, 'success');
+  }
+
+  _cancelAltBarcodeCapture() {
+    this._capturingAltBarcode = false;
+    clearTimeout(this._captureBarcodeTimeout);
+    const btn = document.getElementById('btn-capture-barcode');
+    if (btn) {
+      btn.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M2 4h2v16H2zm3 0h1v16H5zm2 0h2v16H7zm3 0h1v16h-1zm2 0h2v16h-2zm3 0h1v16h-1zm2 0h1v16h-1zm2 0h2v16h-2zM1 20h22v2H1zm0-18h22v2H1z"/></svg> Scan to Add`;
+      btn.disabled = false;
+      btn.style.opacity = '1';
     }
   }
 

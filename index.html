@@ -66,6 +66,12 @@
           Mechanics (Labor)
         </button>
       </li>
+      <li class="menu-item" data-view="reports">
+        <button>
+          <svg viewBox="0 0 24 24"><path d="M7 19H9V7H7V19M11 19H13V3H11V19M15 19H17V11H15V19M3 21H21V23H3V21Z"/></svg>
+          Sales Reports
+        </button>
+      </li>
     </ul>
     
     <div class="sidebar-footer">
@@ -117,7 +123,11 @@
 
       <!-- ================= DASHBOARD VIEW ================= -->
       <section id="view-dashboard" class="view-panel">
-        <div style="display:flex; justify-content:flex-end; margin-bottom: 16px;">
+        <div style="display:flex; justify-content:flex-end; margin-bottom: 16px; gap: 8px;">
+          <button class="btn btn-primary btn-sm" onclick="app.openEntryCapitalModal()" style="gap:8px; padding: 8px 20px; font-size:0.9rem;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M5 4H19C20.1 4 21 4.9 21 6V18C21 19.1 20.1 20 19 20H5C3.9 20 3 19.1 3 18V6C3 4.9 3.9 4 5 4M5 8V18H19V8H5M12 16C10.9 16 10 15.1 10 14C10 12.9 10.9 12 12 12C13.1 12 14 12.9 14 14C14 15.1 13.1 16 12 16Z"/></svg>
+            Entry Capital
+          </button>
           <button class="btn btn-danger btn-sm" onclick="app.openCashOutModal()" style="gap:8px; padding: 8px 20px; font-size:0.9rem;">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M21,18V6H3V18H21M21,4A2,2 0 0,1 23,6V18A2,2 0 0,1 21,20H3A2,2 0 0,1 1,18V6A2,2 0 0,1 3,4H21M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M4,8H7V10H4V8M4,14H7V16H4V14M17,8H20V10H17V8M17,14H20V16H17V14Z"/></svg>
             Cash Out
@@ -194,7 +204,18 @@
               <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M6,16.5L3,19.44V11H6M11,14.66L9.43,13.32L8,14.64V7H11M16,13L13,16V3H16M18.81,12.81L17,11H22V16L20.21,14.21L13,21.36L9.53,18.34L5.75,22H3L9.47,15.66L13,18.64"/></svg>
             </div>
           </div>
-          <div></div><div></div>
+          <!-- Markup Income -->
+          <div class="card stat-card" style="border: 1px solid rgba(46,204,113,0.35); background: linear-gradient(135deg, rgba(46,204,113,0.06), transparent);">
+            <div class="stat-info">
+              <div class="stat-label" style="color: var(--success);">Markup Income (Today)</div>
+              <div class="stat-value" id="dash-markup-income" style="color: var(--success);">₱0.00</div>
+              <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;" id="dash-markup-info">Profit from parts sold</div>
+            </div>
+            <div class="stat-icon" style="color: var(--success);">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M16 6L18.29 8.29L13.41 13.17L9.41 9.17L2 16.59L3.41 18L9.41 12L13.41 16L19.71 9.71L22 12V6H16Z"/></svg>
+            </div>
+          </div>
+          <div></div>
         </div>
 
         <div class="grid-cols-3" style="grid-template-columns: 2fr 1fr 1fr;">
@@ -226,20 +247,6 @@
           </div>
         </div>
 
-        <!-- Cash Out Breakdown Panel -->
-        <div class="card">
-          <div class="card-title">
-            <span>Cash Out Breakdown (Today)</span>
-            <button class="btn btn-danger btn-sm" onclick="app.openCashOutModal()" style="padding: 4px 14px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="margin-right:4px;"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
-              New Cash Out
-            </button>
-          </div>
-          <div class="recent-sales-list" id="dash-cashout-list" style="max-height: 220px; overflow-y: auto;">
-            <!-- Populated by JS -->
-          </div>
-        </div>
-
         <div class="card">
           <div class="card-title">
             <span>Quick Service Queue Overview</span>
@@ -262,6 +269,79 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </section>
+
+      <!-- ================= REPORTS VIEW ================= -->
+      <section id="view-reports" class="view-panel" style="padding-bottom: 40px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <h2 style="margin: 0;">Sales Reports</h2>
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <div style="display: flex; gap: 8px; align-items: center; background: var(--bg-secondary); padding: 4px 12px; border-radius: var(--radius-md);">
+              <label style="font-size: 0.85rem; font-weight: 500; margin: 0;">From:</label>
+              <input type="date" class="input-control" id="report-start-date" style="border: none; padding: 4px; font-size: 0.9rem;" onchange="app.renderReports()">
+              <label style="font-size: 0.85rem; font-weight: 500; margin: 0; padding-left: 8px;">To:</label>
+              <input type="date" class="input-control" id="report-end-date" style="border: none; padding: 4px; font-size: 0.9rem;" onchange="app.renderReports()">
+            </div>
+            <button class="btn btn-secondary" onclick="app.renderReports()">Refresh</button>
+            <button class="btn btn-primary" onclick="app.printSalesReport()">Print PDF</button>
+            <button class="btn btn-primary" style="background: var(--success); color: #fff; border-color: var(--success);" onclick="app.exportSalesCSV()">Export CSV</button>
+          </div>
+        </div>
+
+        <!-- Metric Cards -->
+        <div class="grid-cols-4" style="margin-bottom: 24px;">
+          <div class="card stat-card card-accent">
+            <div class="stat-info">
+              <div class="stat-label">Gross Sales</div>
+              <div class="stat-value" id="report-gross-sales">₱0.00</div>
+            </div>
+          </div>
+          <div class="card stat-card card-success">
+            <div class="stat-info">
+              <div class="stat-label">Total Labor</div>
+              <div class="stat-value" id="report-total-labor">₱0.00</div>
+            </div>
+          </div>
+          <div class="card stat-card" style="border: 1px solid rgba(255,59,48,0.4);">
+            <div class="stat-info">
+              <div class="stat-label" style="color: var(--danger);">Total Cash Outs</div>
+              <div class="stat-value" id="report-total-cashouts" style="color: var(--danger);">₱0.00</div>
+            </div>
+          </div>
+          <div class="card stat-card" style="background: linear-gradient(135deg, rgba(255,95,31,0.08), transparent); border: 1px solid var(--accent);">
+            <div class="stat-info">
+              <div class="stat-label">Net Total (Calculated)</div>
+              <div class="stat-value" id="report-net-total" style="color: var(--accent);">₱0.00</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 30px;">
+          <div class="card-title">Transaction History</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date & Time</th>
+                  <th>Transaction ID</th>
+                  <th>Type</th>
+                  <th>Customer</th>
+                  <th>Amount</th>
+                  <th>Payment</th>
+                </tr>
+              </thead>
+              <tbody id="report-transactions-table">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="border-color: var(--danger); background: rgba(255,59,48,0.05);">
+          <div class="card-title" style="color: var(--danger);">Danger Zone</div>
+          <p style="font-size: 0.9rem; margin-bottom: 16px;">This action will permanently delete all completed sales transactions, transaction items, cash out logs, and entry capital records. Service jobs and inventory will remain intact.</p>
+          <button class="btn btn-danger" onclick="app.clearAllSalesData()">Clear All Sales Data</button>
         </div>
       </section>
 
@@ -637,6 +717,26 @@
           <div class="form-group">
             <label for="part-name">Part Name / Description *</label>
             <input type="text" class="input-control" id="part-name" required placeholder="e.g. Brembo Sintered Brake Pads Rear">
+          </div>
+          <div class="form-group">
+            <label for="part-alt-barcodes" style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+              <span>Alternate Barcodes / SKUs
+                <span style="font-weight:400; color:var(--text-secondary); font-size:0.78rem; margin-left:4px;">(optional)</span>
+              </span>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-capture-barcode"
+                onclick="app.captureNextScanToAltBarcodes()"
+                style="padding:3px 10px; font-size:0.75rem; display:flex; align-items:center; gap:5px;">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M2 4h2v16H2zm3 0h1v16H5zm2 0h2v16H7zm3 0h1v16h-1zm2 0h2v16h-2zm3 0h1v16h-1zm2 0h1v16h-1zm2 0h2v16h-2zM1 20h22v2H1zm0-18h22v2H1z"/></svg>
+                Scan to Add
+              </button>
+            </label>
+            <input type="text" class="input-control" id="part-alt-barcodes"
+              placeholder="e.g. 012345678905, 9781234567897"
+              style="font-family: monospace; font-size: 0.88rem;">
+            <div style="margin-top:5px; font-size:0.76rem; color:var(--text-muted); display:flex; align-items:center; gap:5px;">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" style="flex-shrink:0;"><path d="M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zM11 9h2V7h-2v2z"/></svg>
+              Comma-separated. Scanning any of these at the POS will add this item to the cart.
+            </div>
           </div>
           <div class="grid-cols-4">
             <div class="form-group">
@@ -1202,20 +1302,14 @@
     </div>
   </div>
 
-  <!-- ================= CASH OUT MODAL ================= -->
+  <!-- Cash Out Modal -->
   <div class="modal-overlay" id="modal-cashout">
-    <div class="modal-container" style="max-width: 480px;">
+    <div class="modal-container" style="max-width: 420px;">
       <div class="modal-header">
-        <h3 class="modal-title" style="color: var(--danger);">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="margin-right:8px; vertical-align:middle;"><path d="M19,6H5A2,2 0 0,0 3,8V16A2,2 0 0,0 5,18H19A2,2 0 0,0 21,16V8A2,2 0 0,0 19,6M19,16H5V8H19V16M11,9H13V11H15V13H13V15H11V13H9V11H11V9Z"/></svg>
-          Record Cash Out
-        </h3>
+        <h3 class="modal-title" style="color: var(--danger);">Record Cash Out</h3>
         <button class="modal-close" onclick="app.closeModal('modal-cashout')">×</button>
       </div>
       <div class="modal-body">
-        <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:20px;">
-          Record a cash withdrawal from today's sales. This will be deducted from total income on the dashboard.
-        </p>
         <div class="form-group">
           <label for="cashout-amount">Amount (₱) *</label>
           <input type="number" class="input-control" id="cashout-amount" min="1" step="0.01" placeholder="e.g. 500.00" style="font-size: 1.1rem; font-weight: 700;">
@@ -1224,13 +1318,12 @@
           <label for="cashout-reason">Reason / Category *</label>
           <select class="input-control" id="cashout-reason">
             <option value="">-- Select Reason --</option>
-            <option value="Owner Withdrawal">Owner Withdrawal</option>
-            <option value="Supplier Payment">Supplier Payment</option>
-            <option value="Utilities / Bills">Utilities / Bills</option>
-            <option value="Employee Salary">Employee Salary</option>
-            <option value="Petty Cash">Petty Cash</option>
-            <option value="Restocking Purchase">Restocking Purchase</option>
-            <option value="Miscellaneous Expense">Miscellaneous Expense</option>
+            <option value="Owner Drawing">Owner Drawing (Personal)</option>
+            <option value="Supplier Payment">Supplier / Vendor Payment</option>
+            <option value="Shop Expense">Shop Expense (Supplies, etc)</option>
+            <option value="Staff Advance">Staff Advance</option>
+            <option value="Petty Cash Replenishment">Petty Cash Replenishment</option>
+            <option value="Other">Other (Specify in Notes)</option>
           </select>
         </div>
         <div class="form-group">
@@ -1241,13 +1334,88 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="app.closeModal('modal-cashout')">Cancel</button>
         <button class="btn btn-danger" onclick="app.submitCashOut()" style="gap:8px;">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M21,18V6H3V18H21M21,4A2,2 0 0,1 23,6V18A2,2 0 0,1 21,20H3A2,2 0 0,1 1,18V6A2,2 0 0,1 3,4H21M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M4,8H7V10H4V8M4,14H7V16H4V14M17,8H20V10H17V8M17,14H20V16H17V14Z"/></svg>
           Confirm Cash Out
         </button>
       </div>
     </div>
   </div>
 
+  <!-- Entry Capital Modal -->
+  <div class="modal-overlay" id="modal-entry-capital">
+    <div class="modal-container" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color: var(--primary);">Entry Capital</h3>
+        <button class="modal-close" onclick="app.closeModal('modal-entry-capital')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="entry-capital-amount">Starting Amount (₱) *</label>
+          <input type="number" class="input-control" id="entry-capital-amount" min="0" step="0.01" placeholder="e.g. 5000.00" style="font-size: 1.1rem; font-weight: 700;">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="app.closeModal('modal-entry-capital')">Cancel</button>
+        <button class="btn btn-primary" onclick="app.submitEntryCapital()" style="gap:8px;">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M5 4H19C20.1 4 21 4.9 21 6V18C21 19.1 20.1 20 19 20H5C3.9 20 3 19.1 3 18V6C3 4.9 3.9 4 5 4M5 8V18H19V8H5M12 16C10.9 16 10 15.1 10 14C10 12.9 10.9 12 12 12C13.1 12 14 12.9 14 14C14 15.1 13.1 16 12 16Z"/></svg>
+          Save Capital
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ============ SETTLE DEBT MODAL ============ -->
+  <div class="modal-overlay" id="modal-settle-debt">
+    <div class="modal-container" style="max-width: 480px;">
+      <div class="modal-header" style="border-bottom: 2px solid var(--danger);">
+        <h3 class="modal-title" style="color: var(--danger);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle; margin-right:6px;">
+            <path d="M11.5 2C6.81 2 3 5.81 3 10.5S6.81 19 11.5 19h.5v3c4.86-2.34 8-7 8-11.5C20 5.81 16.19 2 11.5 2zm1 14.5h-2v-2h2v2zm0-4h-2c0-3.25 3-3 3-5 0-1.1-.9-2-2-2s-2 .9-2 2h-2c0-2.21 1.79-4 4-4s4 1.79 4 4c0 2.5-3 2.75-3 5z"/>
+          </svg>
+          Settle Customer Debt
+        </h3>
+        <button class="modal-close" onclick="app.closeModal('modal-settle-debt')">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="settle-debt-customer-info" style="background: rgba(255,69,58,0.08); border: 1px solid rgba(255,69,58,0.3); border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px;">
+          <!-- Populated by JS -->
+        </div>
+        <div id="settle-debt-items-list" style="max-height: 220px; overflow-y: auto; margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;">
+          <!-- Populated by JS -->
+        </div>
+        <div style="background: var(--bg-secondary); border-radius: var(--radius-md); padding: 14px;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+            <span style="color: var(--text-secondary);">Total Outstanding Debt</span>
+            <span id="settle-debt-total" style="font-weight:700; font-size:1.1rem; color: var(--danger);">₱0.00</span>
+          </div>
+          <label style="font-size:0.8rem; color:var(--text-secondary); display:block; margin-bottom:6px;">Payment Method</label>
+          <select class="input-control" id="settle-debt-method" style="margin-bottom: 12px;">
+            <option value="Cash">Cash</option>
+            <option value="Wallet">GCash / Wallet</option>
+            <option value="Card">Card</option>
+          </select>
+          <div id="settle-debt-cash-section">
+            <label style="font-size:0.8rem; color:var(--text-secondary); display:block; margin-bottom:6px;">Amount Tendered</label>
+            <input type="number" class="input-control" id="settle-debt-tendered" placeholder="0.00" min="0" step="0.01" oninput="app.calcSettleChange()">
+            <div style="display:flex; justify-content:space-between; margin-top:10px;">
+              <span style="color: var(--text-secondary);">Change Due</span>
+              <span id="settle-debt-change" style="font-weight:600; color: var(--success);">₱0.00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="app.closeModal('modal-settle-debt')">Cancel</button>
+        <button class="btn btn-danger" style="font-weight:700;" onclick="app.confirmSettleDebt()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle; margin-right:4px;">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+          </svg>
+          Confirm — Mark Debt as Paid
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- DB Loading Splash Overlay -->
   <div id="db-loading-overlay" class="loading-overlay" style="display: none;">

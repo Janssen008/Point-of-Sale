@@ -11,17 +11,21 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- Stores all motorcycle parts / products in inventory
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS parts (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  sku         TEXT NOT NULL UNIQUE,
-  name        TEXT NOT NULL,
-  category    TEXT NOT NULL,
-  cost        NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
-  price       NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
-  stock       INTEGER NOT NULL DEFAULT 0,
-  min_stock   INTEGER NOT NULL DEFAULT 2,
-  created_at  TIMESTAMPTZ DEFAULT NOW(),
-  updated_at  TIMESTAMPTZ DEFAULT NOW()
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sku          TEXT NOT NULL UNIQUE,
+  name         TEXT NOT NULL,
+  category     TEXT NOT NULL,
+  cost         NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+  price        NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+  stock        INTEGER NOT NULL DEFAULT 0,
+  min_stock    INTEGER NOT NULL DEFAULT 2,
+  alt_barcodes TEXT[] DEFAULT '{}',          -- Alternate barcodes/SKUs that resolve to this item
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- MIGRATION: If table already exists, add the alt_barcodes column:
+-- ALTER TABLE parts ADD COLUMN IF NOT EXISTS alt_barcodes TEXT[] DEFAULT '{}';
 
 -- =====================================================================
 -- TABLE: customers
@@ -278,8 +282,24 @@ ALTER TABLE cash_outs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "anon_all_cash_outs" ON cash_outs FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- =====================================================================
+-- TABLE: entry_capitals
+-- Records of starting cash for the day
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS entry_capitals (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  amount     NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+  date       TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_entry_capitals_date ON entry_capitals(date DESC);
+
+ALTER TABLE entry_capitals ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "anon_all_entry_capitals" ON entry_capitals FOR ALL TO anon USING (true) WITH CHECK (true);
+
+-- =====================================================================
 -- All done!
 -- Tables: parts, customers, vehicles, service_jobs,
 --         service_job_parts, transactions, transaction_items,
---         mechanics, labor_records, cash_outs
+--         mechanics, labor_records, cash_outs, entry_capitals
 -- =====================================================================

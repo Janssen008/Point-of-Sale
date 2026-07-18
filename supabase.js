@@ -35,26 +35,28 @@ const DB = {
     if (error) throw error;
     // Map snake_case columns to camelCase for app compatibility
     return data.map(p => ({
-      id:       p.id,
-      sku:      p.sku,
-      name:     p.name,
-      category: p.category,
-      cost:     parseFloat(p.cost),
-      price:    parseFloat(p.price),
-      stock:    p.stock,
-      minStock: p.min_stock,
+      id:          p.id,
+      sku:         p.sku,
+      name:        p.name,
+      category:    p.category,
+      cost:        parseFloat(p.cost),
+      price:       parseFloat(p.price),
+      stock:       p.stock,
+      minStock:    p.min_stock,
+      altBarcodes: Array.isArray(p.alt_barcodes) ? p.alt_barcodes : [],
     }));
   },
 
   async upsertPart(part) {
     const row = {
-      sku:       part.sku,
-      name:      part.name,
-      category:  part.category,
-      cost:      part.cost,
-      price:     part.price,
-      stock:     part.stock,
-      min_stock: part.minStock,
+      sku:          part.sku,
+      name:         part.name,
+      category:     part.category,
+      cost:         part.cost,
+      price:        part.price,
+      stock:        part.stock,
+      min_stock:    part.minStock,
+      alt_barcodes: Array.isArray(part.altBarcodes) ? part.altBarcodes : [],
     };
     if (part.id && !part.id.startsWith('p')) {
       row.id = part.id;  // existing UUID
@@ -123,7 +125,7 @@ const DB = {
       name:             customer.name,
       phone:            customer.phone,
       email:            customer.email || null,
-      outstanding_debt: customer.debt  || 0,
+      outstanding_debt: customer.debt != null ? customer.debt : 0,
     };
     if (customer.id && customer.id.includes('-') && customer.id.length > 10) {
       row.id = customer.id;
@@ -141,6 +143,14 @@ const DB = {
     const { error } = await _supabase
       .from('customers')
       .delete()
+      .eq('id', customerId);
+    if (error) throw error;
+  },
+
+  async clearCustomerDebt(customerId) {
+    const { error } = await _supabase
+      .from('customers')
+      .update({ outstanding_debt: 0 })
       .eq('id', customerId);
     if (error) throw error;
   },
@@ -358,6 +368,14 @@ const DB = {
     }
   },
 
+  async updateTransactionPaymentMethod(transactionId, newMethod) {
+    const { error } = await _supabase
+      .from('transactions')
+      .update({ payment_method: newMethod })
+      .eq('id', transactionId);
+    if (error) throw error;
+  },
+
   // ─── MECHANICS & LABOR ──────────────────────────────────────────────
 
   async getMechanics() {
@@ -470,6 +488,59 @@ const DB = {
       .single();
     if (error) throw error;
     return data.id;
+  },
+
+  async getEntryCapitals() {
+    const { data, error } = await _supabase
+      .from('entry_capitals')
+      .select('*')
+      .order('date', { ascending: false });
+    if (error) {
+      console.warn('[DB] entry_capitals table not found or error:', error.message);
+      return [];
+    }
+    return data.map(r => ({
+      id:     r.id,
+      amount: parseFloat(r.amount),
+      date:   r.date,
+    }));
+  },
+
+  async createEntryCapital(entry) {
+    const { data, error } = await _supabase
+      .from('entry_capitals')
+      .insert({
+        amount: entry.amount,
+        date:   entry.date,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data.id;
+  },
+
+  async deleteAllSalesData() {
+    // Delete all records from related sales tables.
+    // We use .neq('id', 'dummy_value_that_does_not_exist') as a workaround to delete all rows
+    // since Supabase JS requires a filter for delete operations.
+    const dummyId = '00000000-0000-0000-0000-000000000000';
+    
+    // transaction_items is dependent on transactions, so we delete it first or rely on cascade.
+    // The schema says ON DELETE CASCADE for transaction_id.
+    
+    // 1. Delete Transactions
+    const { error: err1 } = await _supabase.from('transactions').delete().neq('id', 'dummy');
+    if (err1) throw err1;
+
+    // 2. Delete Cash Outs
+    const { error: err2 } = await _supabase.from('cash_outs').delete().neq('id', dummyId);
+    if (err2) throw err2;
+
+    // 3. Delete Entry Capitals
+    const { error: err3 } = await _supabase.from('entry_capitals').delete().neq('id', dummyId);
+    if (err3) throw err3;
+    
+    console.log('[DB] All sales data cleared.');
   },
 };
 
