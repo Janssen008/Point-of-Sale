@@ -2225,8 +2225,8 @@ class ApexMotoPOS {
     const bPlate = document.getElementById('bike-plate')?.value.trim() || '';
     const bVin   = document.getElementById('bike-vin')?.value.trim()   || '';
 
-    if (!name || !phone) {
-      this.showToast("Full Name and Phone Number are required", "warning");
+    if (!name) {
+      this.showToast("Full Name is required", "warning");
       return;
     }
 
@@ -3558,13 +3558,13 @@ class ApexMotoPOS {
       this.addToCart(part.id);
       this.showToast(label, "success");
     } else {
-      // If the modal is open in captureNextScanToAltBarcodes mode, intercept
+      // If in barcode capture mode for alt barcodes, intercept
       if (this._capturingAltBarcode) {
         this._appendAltBarcode(sku);
         return;
       }
-      this.showToast(`Unknown product code: ${sku}. Initiating auto-add...`, "info");
-      this.promptAddNewItem(sku);
+      // Unknown barcode — just warn, do NOT open any modal at POS
+      this.showToast(`⚠ Barcode not found: ${sku}`, 'warning');
     }
   }
 
