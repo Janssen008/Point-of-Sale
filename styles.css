@@ -1996,8 +1996,19 @@ body.login-mode .sidebar {
 body.login-mode header {
   display: none !important;
 }
+body.login-mode .shortcut-legend-bar {
+  display: none !important;
+}
 body.login-mode .main-wrapper {
   margin-left: 0 !important;
+  width: 100vw;
+}
+body.login-mode .content-area {
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
 }
 
 /* Shared Receipt Styles */

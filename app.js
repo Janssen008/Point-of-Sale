@@ -37,6 +37,7 @@ class ApexMotoPOS {
     this.showLoadingOverlay(true);
     try {
       await this.loadData();
+      this.populateCartMechanicsDropdown();
       this.switchView('login');
       this.showToast("Connected to Supabase — Data Loaded", "success");
     } catch (err) {
@@ -65,6 +66,18 @@ class ApexMotoPOS {
     this.mechanics = mechanics || [];
     this.cashOuts = cashOuts || [];
     this.entryCapitals = entryCapitals || [];
+  }
+
+  populateCartMechanicsDropdown() {
+    const select = document.getElementById('cart-mechanic-select');
+    if (!select) return;
+    select.innerHTML = '<option value="">None (Retail Sale)</option>';
+    this.mechanics.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.name;
+      select.appendChild(opt);
+    });
   }
 
   // Show/hide loading overlay
@@ -100,6 +113,42 @@ class ApexMotoPOS {
         this.switchView(view);
       });
     });
+
+    // Auto-comma for Alternate Barcodes scanner input (detects scanner speed)
+    const altBarcodeInput = document.getElementById('part-alt-barcodes');
+    if (altBarcodeInput) {
+      let altLastKeyTime = Date.now();
+      let altScannerTimer = null;
+      let altIsScanner = false;
+
+      altBarcodeInput.addEventListener('keydown', (e) => {
+        // Block Enter from submitting the form
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          // Treat Enter the same as end-of-scan
+          const val = altBarcodeInput.value.trim();
+          if (val && !val.endsWith(',')) {
+            altBarcodeInput.value = val + ', ';
+          }
+          return;
+        }
+        const now = Date.now();
+        // If keystrokes arrive in < 40ms, it's a scanner
+        altIsScanner = (now - altLastKeyTime) < 40;
+        altLastKeyTime = now;
+
+        if (altIsScanner) {
+          clearTimeout(altScannerTimer);
+          // After 150ms of no new keystrokes, treat the scan as complete
+          altScannerTimer = setTimeout(() => {
+            const val = altBarcodeInput.value.trim();
+            if (val && !val.endsWith(',')) {
+              altBarcodeInput.value = val + ', ';
+            }
+          }, 150);
+        }
+      });
+    }
 
     // POS Search & Category Filter
     const posSearchInput = document.getElementById('pos-search-input');
@@ -1272,19 +1321,18 @@ class ApexMotoPOS {
       const card = document.createElement('div');
       card.className = 'cart-item';
       card.innerHTML = `
-        <div class="cart-item-details">
-          <div class="cart-item-name">${part.name}</div>
-          <div class="cart-item-price">₱${part.price.toFixed(2)} each</div>
-          <div class="cart-item-qty">
-            <button class="qty-btn" onclick="app.updateCartQty('${part.id}', ${item.quantity - 1})">-</button>
-            <span class="qty-val">${item.quantity}</span>
-            <button class="qty-btn" onclick="app.updateCartQty('${part.id}', ${item.quantity + 1})" ${item.quantity >= part.stock ? 'disabled' : ''}>+</button>
-          </div>
+        <button class="qty-btn" style="background: #5a6268; color: #fff; border: none;" onclick="app.updateCartQty('${part.id}', ${item.quantity + 1})" ${item.quantity >= part.stock ? 'disabled' : ''}>+</button>
+        <span class="qty-val">${item.quantity}</span>
+        <button class="qty-btn" style="background: #d9534f; color: #fff; border: none;" onclick="app.updateCartQty('${part.id}', ${item.quantity - 1})">-</button>
+        
+        <div class="cart-item-name" title="${part.name}">${part.name}</div>
+        
+        <div style="display: flex; flex-direction: column; align-items: flex-end; line-height: 1.15;">
+          <div class="cart-item-total">${itemTotal.toFixed(2)}</div>
+          <div class="cart-item-price">${part.price.toFixed(2)}</div>
         </div>
-        <div class="cart-item-right">
-          <button class="btn btn-danger btn-sm btn-icon-only" onclick="app.removeFromCart('${part.id}')" title="Delete">×</button>
-          <div class="cart-item-total">₱${itemTotal.toFixed(2)}</div>
-        </div>
+        
+        <button class="cart-item-remove" onclick="app.removeFromCart('${part.id}')" title="Remove">V</button>
       `;
       container.appendChild(card);
     });
@@ -1351,20 +1399,58 @@ class ApexMotoPOS {
 
       const card = document.createElement('div');
       card.className = 'job-card';
-      card.addEventListener('click', () => this.openManageJobModal(job.id));
+      card.addEventListener('click', (e) => {
+        // Prevent opening modal if clicking on the parts toggle or breakdown
+        if (e.target.closest('.parts-toggle-btn') || e.target.closest('.parts-breakdown-list')) {
+          return;
+        }
+        this.openManageJobModal(job.id);
+      });
+
+      let partsBreakdownHtml = '';
+      if (job.parts.length > 0) {
+        const partsLi = job.parts.map(p => `
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <span>${p.quantity}x ${p.name}</span>
+            <span>₱${(p.price * p.quantity).toFixed(2)}</span>
+          </div>
+        `).join('');
+        partsBreakdownHtml = `
+          <div class="parts-breakdown-list" style="display: none; font-size: 0.75rem; color: var(--text-secondary); margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1);">
+            ${partsLi}
+          </div>
+        `;
+      }
+
       card.innerHTML = `
         <div class="job-id">${job.id}</div>
         <div class="job-customer">${job.customerName}</div>
         <div class="job-bike">${job.vehicle}</div>
         <div class="job-mechanic">
-          <svg viewBox="0 0 24 24"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>
           ${job.mechanic}
         </div>
         <div class="job-card-footer">
-          <div style="font-size:0.75rem; color:var(--text-secondary);">${job.parts.length} part${job.parts.length !== 1 ? 's' : ''}</div>
+          <div class="parts-toggle-btn" style="font-size:0.75rem; color:var(--text-secondary); cursor:pointer; text-decoration:underline;" title="Click to toggle breakdown">
+            ${job.parts.length} part${job.parts.length !== 1 ? 's' : ''}
+          </div>
           <div class="job-total">₱${totalCost.toFixed(2)}</div>
         </div>
+        ${partsBreakdownHtml}
       `;
+
+      const toggleBtn = card.querySelector('.parts-toggle-btn');
+      if (toggleBtn && job.parts.length > 0) {
+        toggleBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const list = card.querySelector('.parts-breakdown-list');
+          if (list.style.display === 'none') {
+            list.style.display = 'block';
+          } else {
+            list.style.display = 'none';
+          }
+        });
+      }
 
       const listEl = document.getElementById(`list-${job.status.replace(' ', '-')}`);
       if (listEl) listEl.appendChild(card);
@@ -1437,6 +1523,7 @@ class ApexMotoPOS {
         <td style="text-align:center; color:var(--text-secondary);">${p.minStock} units</td>
         <td>
           <div style="display:flex; gap:4px;">
+            <button class="btn btn-secondary btn-sm btn-icon-only" onclick="app.quickAddStock('${p.id}')" title="Quick Add Stock" style="background-color: var(--success); color: white; border-color: var(--success);"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg></button>
             <button class="btn btn-secondary btn-sm btn-icon-only" onclick="app.printBarcode('${p.id}')" title="Print Barcode"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18,3H6V7H18M19,12A1,1 0 0,1 18,11A1,1 0 0,1 19,10A1,1 0 0,1 20,11A1,1 0 0,1 19,12M16,19H8V14H16M19,8H5A3,3 0 0,0 2,11V17H6V21H18V17H22V11A3,3 0 0,0 19,8Z"/></svg></button>
             <button class="btn btn-secondary btn-sm btn-icon-only" onclick="app.openPartModal('${p.id}')" title="Edit Part"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg></button>
             <button class="btn btn-danger btn-sm btn-icon-only" onclick="app.deletePart('${p.id}')" title="Delete Part">×</button>
@@ -1774,6 +1861,7 @@ class ApexMotoPOS {
       subtotal: subtotal,
       discount: discount,
       total: total,
+      activeJobs: this.serviceJobs ? this.serviceJobs.filter(j => j.status !== 'Completed') : [],
       ...extraData
     };
 
@@ -2106,6 +2194,33 @@ class ApexMotoPOS {
     }, 50);
   }
 
+  async quickAddStock(partId) {
+    const partIndex = this.parts.findIndex(p => p.id === partId);
+    if (partIndex === -1) return;
+    const part = this.parts[partIndex];
+    
+    const input = prompt(`Add stock for: ${part.name}\nCurrent stock: ${part.stock}\n\nEnter quantity to add:`, "1");
+    if (input === null) return; // User cancelled
+    
+    const qtyToAdd = parseInt(input, 10);
+    if (isNaN(qtyToAdd) || qtyToAdd <= 0) {
+      this.showToast("Please enter a valid positive number.", "warning");
+      return;
+    }
+    
+    const newStock = part.stock + qtyToAdd;
+    try {
+      await DB.updatePartStock(partId, newStock);
+      this.parts[partIndex].stock = newStock;
+      this.renderInventoryTable();
+      this.renderPOSCatalog();
+      this.showToast(`Successfully added ${qtyToAdd} to ${part.name}. New stock: ${newStock}`, "success");
+    } catch (error) {
+      console.error(error);
+      this.showToast("Failed to add stock: " + error.message, "danger");
+    }
+  }
+
   async savePartForm() {
     const sku = document.getElementById('part-sku').value.trim();
     const name = document.getElementById('part-name').value.trim();
@@ -2129,6 +2244,16 @@ class ApexMotoPOS {
     );
     if (clashPart) {
       this.showToast(`Barcode clash: "${clashPart.sku}" is already the primary SKU of "${clashPart.name}".`, 'warning');
+      return;
+    }
+
+    // Validate: Primary SKU must be unique
+    const primaryClash = this.parts.find(p =>
+      p.id !== this.editingPartId &&
+      p.sku.toLowerCase() === sku.toLowerCase()
+    );
+    if (primaryClash) {
+      this.showToast(`SKU clash: "${sku}" is already used by "${primaryClash.name}".`, 'warning');
       return;
     }
 
@@ -2622,10 +2747,74 @@ class ApexMotoPOS {
     this.calculateCashChange(); // update cash change if cash is selected
   }
 
-  openCheckoutModal() {
+  async openCheckoutModal() {
     if (this.cart.length === 0) {
       this.showToast("Cannot checkout empty cart!", "warning");
       return;
+    }
+
+    // Check for auto-routing to Service Tracker
+    const cartMechanicSelect = document.getElementById('cart-mechanic-select');
+    const cartMechanicId = cartMechanicSelect ? cartMechanicSelect.value : '';
+    
+    if (this.currentCartCustomerId && cartMechanicId && this.activeView === 'pos') {
+      const mechanic = this.mechanics.find(m => m.id === cartMechanicId);
+      const customer = this.customers.find(c => c.id === this.currentCartCustomerId);
+      
+      const newJob = {
+        id: DB.generateId(),
+        customerId: customer.id,
+        customerName: customer.name,
+        vehicle: customer.vehicleModel || 'N/A',
+        mechanic: mechanic.name,
+        status: 'Pending', // Hardcode default status as requested
+        description: 'Auto-routed from POS Cart',
+        laborCost: 0
+      };
+      
+      const partsToInsert = this.cart.map(item => {
+        const part = this.parts.find(p => p.id === item.partId);
+        return {
+          job_id: newJob.id,
+          part_id: part.id,
+          name: part.name,
+          price: part.price,
+          quantity: item.quantity
+        };
+      });
+
+      this.showLoadingOverlay(true);
+      try {
+        await DB.createServiceJob(newJob);
+        await DB.insertServiceJobParts(partsToInsert);
+        
+        newJob.parts = partsToInsert.map(p => ({
+          partId: p.part_id,
+          name: p.name,
+          price: p.price,
+          quantity: p.quantity
+        }));
+        
+        this.serviceJobs.push(newJob);
+        
+        // Reset Cart
+        this.cart = [];
+        this.renderPOSCart();
+        this.detachCustomerFromCart();
+        if (cartMechanicSelect) cartMechanicSelect.value = '';
+        
+        this.showLoadingOverlay(false);
+        this.showToast("Routed to Service Tracker successfully!", "success");
+        
+        // Switch view to service board
+        this.switchView('service');
+        this.renderServiceBoard();
+      } catch (err) {
+        this.showLoadingOverlay(false);
+        console.error(err);
+        this.showToast("Failed to route to Service Tracker: " + err.message, "danger");
+      }
+      return; // Exit checkout flow
     }
 
     // Populate checkout mechanic dropdown
@@ -2637,6 +2826,11 @@ class ApexMotoPOS {
       opt.textContent = m.name;
       mechSelect.appendChild(opt);
     });
+
+    // Pre-select mechanic from cart panel if one is assigned
+    if (cartMechanicSelect && cartMechanicSelect.value) {
+      mechSelect.value = cartMechanicSelect.value;
+    }
 
     document.getElementById('checkout-labor-fee').value = '0.00';
 
@@ -2808,8 +3002,21 @@ class ApexMotoPOS {
     const finalCustId = customer ? customer.id : null;
     const finalCustName = customer ? customer.name : custName;
 
-    const yearIdx = this.serviceJobs.length + 1001;
-    const jobId = `WO-${new Date().getFullYear()}-${String(yearIdx).padStart(4,'0')}`;
+    let maxIdx = 1000;
+    const currentYear = new Date().getFullYear();
+    this.serviceJobs.forEach(j => {
+      if (j.id.startsWith(`WO-${currentYear}-`)) {
+        const parts = j.id.split('-');
+        if (parts.length === 3) {
+          const idx = parseInt(parts[2]);
+          if (!isNaN(idx) && idx > maxIdx) {
+            maxIdx = idx;
+          }
+        }
+      }
+    });
+    const yearIdx = maxIdx + 1;
+    const jobId = `WO-${currentYear}-${String(yearIdx).padStart(4,'0')}`;
 
     const newJob = {
       id: jobId,
@@ -2950,7 +3157,11 @@ class ApexMotoPOS {
       `;
 
       if (!isOut) {
-        card.addEventListener('click', () => this.addPartToJob(p.id));
+        card.addEventListener('click', () => {
+          this.addPartToJob(p.id);
+          card.classList.add('item-added');
+          setTimeout(() => card.classList.remove('item-added'), 400);
+        });
         card.addEventListener('mouseenter', () => { card.style.borderColor = 'var(--accent)'; card.style.transform = 'translateY(-2px)'; });
         card.addEventListener('mouseleave', () => { card.style.borderColor = isAllocated ? 'var(--accent)' : 'var(--border-color)'; card.style.transform = ''; });
       }
@@ -3039,7 +3250,9 @@ class ApexMotoPOS {
 
       this.populateManageJobPartsDropdown();
       this.renderJobAllocatedPartsList(job);
-      this.showToast(`Allocated 1x ${part.name} to Work Order`, "success");
+      this.renderServiceBoard();
+      this.broadcastToCustomerDisplay(this.cart.length > 0 ? 'cart-updating' : 'welcome');
+      // this.showToast(`Allocated 1x ${part.name} to Work Order`, "success"); // Removed as per request
     } catch (err) {
       part.stock++; // rollback optimistic decrement
       this.showToast("Database error: " + err.message, "danger");
@@ -3068,6 +3281,8 @@ class ApexMotoPOS {
       if (allocatedItem._rowId) await DB.updateJobPartQty(allocatedItem._rowId, newQty);
       this.populateManageJobPartsDropdown();
       this.renderJobAllocatedPartsList(job);
+      this.renderServiceBoard();
+      this.broadcastToCustomerDisplay(this.cart.length > 0 ? 'cart-updating' : 'welcome');
     } catch (err) {
       part.stock += diff; // rollback
       allocatedItem.quantity -= diff;
@@ -3091,6 +3306,8 @@ class ApexMotoPOS {
       job.parts.splice(itemIndex, 1);
       this.populateManageJobPartsDropdown();
       this.renderJobAllocatedPartsList(job);
+      this.renderServiceBoard();
+      this.broadcastToCustomerDisplay(this.cart.length > 0 ? 'cart-updating' : 'welcome');
       this.showToast("Part allocation removed from work order", "info");
     } catch (err) {
       if (part) part.stock -= allocatedItem.quantity; // rollback
@@ -3123,6 +3340,7 @@ class ApexMotoPOS {
       await DB.updateServiceJob(job);
       this.closeModal('modal-manage-job');
       this.renderServiceBoard();
+      this.broadcastToCustomerDisplay(this.cart.length > 0 ? 'cart-updating' : 'welcome');
       if (oldStatus !== newStatus) {
         this.showToast(`Work order ${job.id} moved to: ${newStatus}`, "success");
       } else {
@@ -3151,6 +3369,7 @@ class ApexMotoPOS {
         this.serviceJobs = this.serviceJobs.filter(j => j.id !== this.activeJobId);
         this.closeModal('modal-manage-job');
         this.renderServiceBoard();
+        this.broadcastToCustomerDisplay(this.cart.length > 0 ? 'cart-updating' : 'welcome');
         this.showToast("Work order discarded", "info");
       } catch (err) {
         this.showToast("Database error: " + err.message, "danger");

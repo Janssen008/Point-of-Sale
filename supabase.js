@@ -282,6 +282,14 @@ const DB = {
     }
   },
 
+  async insertServiceJobParts(partsArray) {
+    if (!partsArray || partsArray.length === 0) return;
+    const { error } = await _supabase
+      .from('service_job_parts')
+      .insert(partsArray);
+    if (error) throw error;
+  },
+
   async updateJobPartQty(rowId, newQty) {
     const { error } = await _supabase
       .from('service_job_parts')

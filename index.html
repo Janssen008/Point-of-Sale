@@ -6,7 +6,7 @@
   <title>Diego's Motorcycle Parts & Accessories - POS</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="login-mode">
 
   <!-- Sidebar Navigation -->
   <aside class="sidebar">
@@ -24,7 +24,7 @@
     </div>
     
     <ul class="sidebar-menu">
-      <li class="menu-item active" data-view="dashboard">
+      <li class="menu-item" data-view="dashboard">
         <button>
           <svg viewBox="0 0 24 24"><path d="M13,3V9H21V3H13M13,21H21V11H13V21M3,21H11V15H3V21M3,13H11V3H3V13Z"/></svg>
           Dashboard
@@ -391,7 +391,7 @@
           </div>
 
           <!-- RIGHT: Checkout Cart Panel -->
-          <div class="pos-cart-panel">
+          <div class="pos-cart-panel" id="pos-cart-panel">
             <div class="cart-header">
               <div class="cart-title">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.25,18A1.25,1.25 0 1,1 16,19.25A1.24,1.24 0 0,1 17.25,18M7.25,18A1.25,1.25 0 1,1 6,19.25A1.24,1.24 0 0,1 7.25,18M3,3H4.75L7.25,14.25H18.25L21,5.25H6.25M17.25,16.25H7.25L6,14.25H18.25Z"/></svg>
@@ -407,20 +407,29 @@
 
             <!-- Customer attachment area -->
             <div class="cart-customer-selector">
-              <div id="cart-no-customer" style="display: flex; justify-content: space-between; align-items: center;">
+              <div id="cart-no-customer" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <div class="walkin-label">
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="opacity: 0.5;"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>
                   <span>Walk-in Transaction</span>
                 </div>
                 <button class="btn btn-secondary btn-sm" onclick="app.openSelectCustomerModal()">Attach</button>
               </div>
-              <div id="cart-has-customer" style="display: none;" class="selected-customer-info">
+              <div id="cart-has-customer" style="display: none; margin-bottom: 8px;" class="selected-customer-info">
                 <div style="flex-grow: 1;">
                   <div style="font-weight: 600;" id="cart-customer-name">Alex Mercer</div>
                   <div style="font-size: 0.75rem; color: var(--text-secondary);" id="cart-customer-vehicle">Yamaha MT-07</div>
                   <div class="loyalty-badge" id="cart-customer-loyalty" style="margin-top: 4px; font-size: 0.75rem; color: var(--success); font-weight: 700; display: none;">★ Loyalty Customer</div>
                 </div>
                 <button class="btn btn-danger btn-sm btn-icon-only" onclick="app.detachCustomerFromCart()" title="Detach Customer">×</button>
+              </div>
+              
+              <!-- Assign Mechanic (for Service Tracker routing) -->
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-size: 0.75rem; color: var(--text-secondary);">Assign Mechanic (Service Tracker)</label>
+                <select class="input-control" id="cart-mechanic-select" style="font-size: 0.85rem; padding: 6px;">
+                  <option value="">None (Retail Sale)</option>
+                  <!-- Populated by JS -->
+                </select>
               </div>
             </div>
 
@@ -1107,22 +1116,9 @@
               </div>
             </div>
 
-            <!-- Mechanic Labor -->
-            <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 14px; margin: 0;">
-              <label style="font-weight: 600; font-size: 0.85rem;">Mechanic Labor (Optional)</label>
-              <div class="grid-cols-2" style="gap: 10px; margin-top: 8px;">
-                <div>
-                  <label for="checkout-mechanic" style="font-size:0.8rem;">Assign To</label>
-                  <select class="input-control" id="checkout-mechanic" onchange="app.updateCheckoutTotal()">
-                    <option value="">-- No Mechanic --</option>
-                  </select>
-                </div>
-                <div>
-                  <label for="checkout-labor-fee" style="font-size:0.8rem;">Labor Fee (₱)</label>
-                  <input type="number" class="input-control" id="checkout-labor-fee" value="0.00" step="1" min="0" oninput="app.updateCheckoutTotal()">
-                </div>
-              </div>
-            </div>
+            <!-- Hidden fields kept for JS compatibility -->
+            <select id="checkout-mechanic" style="display:none;" onchange="app.updateCheckoutTotal()"><option value="">-- No Mechanic --</option></select>
+            <input type="number" id="checkout-labor-fee" value="0.00" style="display:none;" oninput="app.updateCheckoutTotal()">
 
             <!-- GCash Reference (shown when GCash selected) -->
             <div class="form-group" id="gcash-reference-container" style="display: none; border-top: 1px solid var(--border-color); padding-top: 14px; margin: 0;">
@@ -1416,6 +1412,7 @@
       </div>
     </div>
   </div>
+
 
   <!-- DB Loading Splash Overlay -->
   <div id="db-loading-overlay" class="loading-overlay" style="display: none;">
