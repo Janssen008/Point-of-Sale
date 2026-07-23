@@ -15,6 +15,10 @@
       <h1>Inventory Encoder</h1>
     </div>
     <div class="header-actions">
+      <button class="staff-header-badge" onclick="app.openStaffModal('qty_change')" title="Stock Staff Portal">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+        <span>Stock Staff</span>
+      </button>
       <button class="icon-btn" onclick="app.loadData()" title="Refresh">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/></svg>
       </button>
@@ -54,7 +58,7 @@
     <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M4,6H6V18H4V6M7,6H8V18H7V6M9,6H12V18H9V6M13,6H14V18H13V6M16,6H18V18H16V6M19,6H20V18H19V6M2,4V8H0V4A2,2 0 0,1 2,2H6V4H2M22,2A2,2 0 0,1 24,4V8H22V4H18V2H22M2,16V20H6V22H2A2,2 0 0,1 0,20V16H2M22,20V16H24V20A2,2 0 0,1 22,22H18V20H22Z"/></svg>
   </button>
   
-  <button class="fab add-fab" onclick="app.openPartModal()" title="Add Part">
+  <button class="fab add-fab" onclick="app.openStaffModal('new_item')" title="Add New Item">
     <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
   </button>
 
@@ -67,85 +71,231 @@
           <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
         </button>
       </div>
-      <div id="reader" style="width: 100%; border-radius: 8px; overflow: hidden; background: #000;"></div>
-      <p class="scanner-hint">Point your camera at a barcode</p>
+      <div id="reader" style="width: 100%; border-radius: 8px; overflow: hidden; background: #000; min-height: 180px;"></div>
+      <p class="scanner-hint" id="scanner-hint">Point your camera at a barcode</p>
+
+      <!-- Manual Barcode Input Fallback -->
+      <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border-color);">
+        <label style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 6px;">Or type / scan with hardware scanner:</label>
+        <form style="display: flex; gap: 8px;" onsubmit="event.preventDefault(); app.submitManualScan();">
+          <input type="text" id="manual-barcode-input" class="input-control" placeholder="Enter barcode SKU..." style="font-family: monospace;">
+          <button type="submit" class="btn btn-primary" style="padding: 0 16px; white-space: nowrap;">Submit</button>
+        </form>
+      </div>
     </div>
   </div>
 
-  <!-- Edit/Add Part Sheet -->
+  <!-- Stock Staff Operations Modal (Bottom Sheet) -->
   <div class="bottom-sheet-overlay" id="part-sheet-overlay">
     <div class="bottom-sheet" id="part-sheet">
+      <!-- Sheet Header -->
       <div class="sheet-header">
-        <h3 id="sheet-title">Edit Part</h3>
-        <button class="close-btn" onclick="app.closePartModal()">
+        <div class="staff-modal-title">
+          <div class="staff-badge"><span class="badge-dot"></span> Stock Staff Portal</div>
+          <h3 id="sheet-title">Inventory Task</h3>
+        </div>
+        <button class="close-btn" onclick="app.closePartModal()" title="Close">
           <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
         </button>
       </div>
+
+      <!-- Segmented Mode Tabs -->
+      <div class="staff-tab-bar">
+        <button class="staff-tab active" id="tab-btn-qty" onclick="app.switchStaffTab('qty_change')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+          Quantity Change
+        </button>
+        <button class="staff-tab" id="tab-btn-new" onclick="app.switchStaffTab('new_item')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+          Inventory New Item
+        </button>
+      </div>
+
       <div class="sheet-content">
-        <form id="form-part" onsubmit="event.preventDefault(); app.savePart();">
-          <input type="hidden" id="part-id">
-          
-          <div class="stock-adjust-container">
-            <label style="color: var(--text-primary); font-size: 1.1rem;">Current Stock</label>
-            <div class="stock-controls">
-              <button type="button" class="stock-btn" onclick="app.adjustStock(-1)">-</button>
-              <input type="number" id="part-stock" required class="stock-input" min="0">
-              <button type="button" class="stock-btn stock-add" onclick="app.adjustStock(1)">+</button>
-            </div>
-          </div>
-
-          <div class="form-group" style="margin-top: 20px;">
-            <label>Name / Description *</label>
-            <input type="text" id="part-name" required class="input-control">
-          </div>
-
-          <div class="form-group">
-            <label>SKU Code *</label>
-            <input type="text" id="part-sku" required class="input-control">
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>Category *</label>
-              <select id="part-category" required class="input-control">
-                <option value="Tires">Tires</option>
-                <option value="Brakes">Brakes</option>
-                <option value="Fluids">Fluids</option>
-                <option value="Filters">Filters</option>
-                <option value="Drivetrain">Drivetrain</option>
-                <option value="Electrical">Electrical</option>
-                <option value="Accessories">Accessories</option>
+        <!-- TAB 1: QUANTITY CHANGE MODE -->
+        <div id="tab-content-qty" class="staff-tab-content active">
+          <div class="target-part-card" id="target-part-card">
+            <div class="part-select-row">
+              <label style="margin:0;">Select Item to Adjust:</label>
+              <select id="staff-part-select" class="input-control part-dropdown" onchange="app.onStaffPartSelectChange(this.value)">
+                <option value="">-- Choose an item --</option>
               </select>
             </div>
-            <div class="form-group">
-              <label>Min Stock</label>
-              <input type="number" id="part-min-stock" required class="input-control" value="2" min="0">
+            <div id="selected-part-preview" class="selected-part-preview" style="display:none;">
+              <div class="preview-header">
+                <div>
+                  <h4 id="preview-part-name">Item Name</h4>
+                  <div class="preview-sku" id="preview-part-sku">SKU: 0000</div>
+                </div>
+                <span class="preview-cat" id="preview-part-cat">Category</span>
+              </div>
+              <div class="preview-stock-info">
+                <span>Current Stock:</span>
+                <strong id="preview-part-stock" class="current-stock-val">0 pcs</strong>
+              </div>
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label>Cost (₱) *</label>
-              <input type="number" id="part-cost" required class="input-control" step="0.01" min="0">
+          <form id="form-qty-change" onsubmit="event.preventDefault(); app.saveStaffQtyChange();">
+            <!-- Action Type pills -->
+            <div class="form-group" style="margin-top: 16px;">
+              <label>Adjustment Action</label>
+              <div class="action-type-selector">
+                <button type="button" class="type-pill active" id="pill-stock_in" onclick="app.onQtyActionTypeChange('stock_in')">
+                  📥 Stock In
+                </button>
+                <button type="button" class="type-pill" id="pill-stock_out" onclick="app.onQtyActionTypeChange('stock_out')">
+                  📤 Stock Out
+                </button>
+                <button type="button" class="type-pill" id="pill-audit" onclick="app.onQtyActionTypeChange('audit')">
+                  📋 Exact Audit
+                </button>
+              </div>
             </div>
-            <div class="form-group">
-              <label>Sell Price (₱) *</label>
-              <input type="number" id="part-price" required class="input-control" step="0.01" min="0">
-            </div>
-          </div>
 
-          <div class="form-group">
-            <label>Alt Barcodes (comma separated)</label>
-            <div style="display: flex; gap: 8px;">
-              <input type="text" id="part-alt-barcodes" class="input-control" style="font-family: monospace; font-size: 0.9rem;">
-              <button type="button" class="btn btn-secondary btn-icon" onclick="app.openScanner('alt')" title="Scan barcode to add">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M4,6H6V18H4V6M7,6H8V18H7V6M9,6H12V18H9V6M13,6H14V18H13V6M16,6H18V18H16V6M19,6H20V18H19V6M2,4V8H0V4A2,2 0 0,1 2,2H6V4H2M22,2A2,2 0 0,1 24,4V8H22V4H18V2H22M2,16V20H6V22H2A2,2 0 0,1 0,20V16H2M22,20V16H24V20A2,2 0 0,1 22,22H18V20H22Z"/></svg>
-              </button>
+            <!-- Calculated Stock Summary Banner -->
+            <div class="stock-calc-banner">
+              <div class="calc-step">
+                <span class="calc-label">Current</span>
+                <span class="calc-val" id="calc-current-val">0</span>
+              </div>
+              <div class="calc-arrow">➔</div>
+              <div class="calc-step">
+                <span class="calc-label">New Total</span>
+                <span class="calc-val highlight" id="calc-new-val">0</span>
+              </div>
+              <div class="calc-badge" id="calc-delta-badge">+0</div>
             </div>
-          </div>
 
-          <button type="submit" class="btn btn-primary btn-block" style="margin-top: 24px;">Save Inventory</button>
-        </form>
+            <!-- Quantity Input & Touch Controls -->
+            <div class="qty-adjust-wrapper">
+              <label id="qty-input-label">Quantity to Add (Stock In)</label>
+              <div class="qty-control-row">
+                <button type="button" class="stock-btn" onclick="app.adjustStaffQty(-1)">-</button>
+                <input type="number" id="staff-qty-input" class="qty-big-input" value="1" min="0" oninput="app.updateCalculatedStock()">
+                <button type="button" class="stock-btn stock-add" onclick="app.adjustStaffQty(1)">+</button>
+              </div>
+
+              <!-- Presets Grid -->
+              <div class="qty-presets">
+                <button type="button" class="preset-btn" onclick="app.applyPresetQty(1)">+1</button>
+                <button type="button" class="preset-btn" onclick="app.applyPresetQty(5)">+5</button>
+                <button type="button" class="preset-btn" onclick="app.applyPresetQty(10)">+10</button>
+                <button type="button" class="preset-btn" onclick="app.applyPresetQty(50)">+50</button>
+              </div>
+            </div>
+
+            <!-- Reason / Note -->
+            <div class="form-group" style="margin-top: 16px;">
+              <label>Staff Reason / Reference Note</label>
+              <select id="staff-qty-reason" class="input-control" style="margin-bottom: 8px;">
+                <option value="Stock In - Supplier Receiving">📥 Stock In - Supplier Receiving</option>
+                <option value="Stock Out - Damaged / Expired">📤 Stock Out - Damaged / Expired</option>
+                <option value="Stock Out - Internal Usage / Shop Use">📤 Stock Out - Internal Shop Use</option>
+                <option value="Inventory Audit Adjustment">📋 Physical Stock Audit</option>
+                <option value="Sale Return / Correction">🔄 Customer Return / Correction</option>
+                <option value="Custom Note">✏️ Other Custom Reason</option>
+              </select>
+              <input type="text" id="staff-qty-note" class="input-control" placeholder="Optional details (e.g. Invoice #, PO #)">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" style="margin-top: 20px;">
+              💾 Apply Quantity Change
+            </button>
+          </form>
+        </div>
+
+        <!-- TAB 2: INVENTORY NEW ITEM MODE -->
+        <div id="tab-content-new" class="staff-tab-content">
+          <form id="form-part" onsubmit="event.preventDefault(); app.savePart();">
+            <input type="hidden" id="part-id">
+            
+            <div class="form-group">
+              <label>Item Name / Description *</label>
+              <input type="text" id="part-name" required class="input-control" placeholder="e.g. Brake Pads Front Honda Click">
+            </div>
+
+            <div class="form-group">
+              <label>SKU / Barcode Code *</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="part-sku" required class="input-control" placeholder="SKU-1001" style="font-family: monospace;">
+                <button type="button" class="btn btn-secondary" onclick="app.generateAutoSKU()" title="Auto-generate SKU">
+                  ⚡ Auto
+                </button>
+                <button type="button" class="btn btn-secondary btn-icon" onclick="app.openScanner('sku')" title="Scan barcode for SKU">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M4,6H6V18H4V6M7,6H8V18H7V6M9,6H12V18H9V6M13,6H14V18H13V6M16,6H18V18H16V6M19,6H20V18H19V6M2,4V8H0V4A2,2 0 0,1 2,2H6V4H2M22,2A2,2 0 0,1 24,4V8H22V4H18V2H22M2,16V20H6V22H2A2,2 0 0,1 0,20V16H2M22,20V16H24V20A2,2 0 0,1 22,22H18V20H22Z"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Category *</label>
+                <select id="part-category" required class="input-control">
+                  <option value="Tires">Tires</option>
+                  <option value="Brakes">Brakes</option>
+                  <option value="Fluids">Fluids</option>
+                  <option value="Filters">Filters</option>
+                  <option value="Drivetrain">Drivetrain</option>
+                  <option value="Electrical">Electrical</option>
+                  <option value="Accessories">Accessories</option>
+                  <option value="Engine Parts">Engine Parts</option>
+                  <option value="Tools">Tools</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Unit</label>
+                <select id="part-unit" class="input-control">
+                  <option value="pcs">Pcs</option>
+                  <option value="set">Set</option>
+                  <option value="box">Box</option>
+                  <option value="pair">Pair</option>
+                  <option value="liter">Liter</option>
+                  <option value="bottle">Bottle</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Cost Price (₱) *</label>
+                <input type="number" id="part-cost" required class="input-control" step="0.01" min="0" placeholder="0.00" oninput="app.calculateMarginPreview()">
+              </div>
+              <div class="form-group">
+                <label>Selling Price (₱) *</label>
+                <input type="number" id="part-price" required class="input-control" step="0.01" min="0" placeholder="0.00" oninput="app.calculateMarginPreview()">
+              </div>
+            </div>
+            <div id="margin-preview-tag" class="margin-preview-tag" style="display:none;">
+              Est. Profit Margin: <span id="margin-percent">0%</span> (<span id="margin-amount">₱0.00</span>)
+            </div>
+
+            <div class="form-row" style="margin-top: 12px;">
+              <div class="form-group">
+                <label>Initial Stock Qty *</label>
+                <input type="number" id="part-stock" required class="input-control" min="0" value="0">
+              </div>
+              <div class="form-group">
+                <label>Min Stock Alert *</label>
+                <input type="number" id="part-min-stock" required class="input-control" value="2" min="0">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Alt Barcodes (comma separated)</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="part-alt-barcodes" class="input-control" style="font-family: monospace; font-size: 0.9rem;" placeholder="e.g. 480123456789">
+                <button type="button" class="btn btn-secondary btn-icon" onclick="app.openScanner('alt')" title="Scan barcode to add">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M4,6H6V18H4V6M7,6H8V18H7V6M9,6H12V18H9V6M13,6H14V18H13V6M16,6H18V18H16V6M19,6H20V18H19V6M2,4V8H0V4A2,2 0 0,1 2,2H6V4H2M22,2A2,2 0 0,1 24,4V8H22V4H18V2H22M2,16V20H6V22H2A2,2 0 0,1 0,20V16H2M22,20V16H24V20A2,2 0 0,1 22,22H18V20H22Z"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" style="margin-top: 24px;">
+              📦 Register New Inventory Item
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   </div>
@@ -155,8 +305,7 @@
 
   <!-- Scripts -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
+  <script src="php_db.js"></script>
   <script src="mobile_inventory.js"></script>
 </body>
 </html>

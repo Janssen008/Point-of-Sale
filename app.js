@@ -39,10 +39,9 @@ class ApexMotoPOS {
       await this.loadData();
       this.populateCartMechanicsDropdown();
       this.switchView('login');
-      this.showToast("Connected to Supabase — Data Loaded", "success");
     } catch (err) {
-      console.error('Supabase init error:', err);
-      this.showToast("Failed to connect to database. Check supabase.js config.", "danger");
+      console.error('Database init error:', err);
+      this.showToast("Failed to connect to database.", "danger");
     } finally {
       this.showLoadingOverlay(false);
     }
@@ -398,6 +397,31 @@ class ApexMotoPOS {
       }
     });
 
+    // Setup Drag and Drop for Service Tracker columns
+    const columns = ['list-Draft', 'list-In-Progress', 'list-Ready'];
+    columns.forEach(colId => {
+      const colEl = document.getElementById(colId);
+      if (!colEl) return;
+      
+      colEl.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        colEl.classList.add('drag-over');
+      });
+      
+      colEl.addEventListener('dragleave', () => {
+        colEl.classList.remove('drag-over');
+      });
+      
+      colEl.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        colEl.classList.remove('drag-over');
+        const jobId = e.dataTransfer.getData('text/plain');
+        const targetStatus = colId.replace('list-', '').replace('-', ' '); // 'Draft', 'In Progress', 'Ready'
+        
+        await this.updateJobStatusViaDrag(jobId, targetStatus);
+      });
+    });
+
     // Initialize Cashier Numpad, Hold/Recall, and Keyboard Wedge Barcode Scanner
     this.setupNumpad();
     this.setupHoldRecall();
@@ -448,9 +472,11 @@ class ApexMotoPOS {
   handleLogin() {
     const pin = document.getElementById('login-pin-input').value.trim();
     if (pin === '1234') {
-      this.currentUser = { name: 'Pew Miller', role: 'admin', initial: 'PM' };
-    } else if (pin === '0000') {
-      this.currentUser = { name: 'Staff User', role: 'staff', initial: 'SU' };
+      this.currentUser = { name: 'Admin (Owner)', role: 'admin', initial: 'AD' };
+    } else if (pin === '1111') {
+      this.currentUser = { name: 'Cashier', role: 'cashier', initial: 'CS' };
+    } else if (pin === '2222') {
+      this.currentUser = { name: 'Mechanic', role: 'mechanic', initial: 'MC' };
     } else {
       this.showToast("Invalid PIN. Please try again.", "danger");
       document.getElementById('login-pin-input').value = '';
@@ -462,12 +488,18 @@ class ApexMotoPOS {
     document.getElementById('current-user-name').textContent = this.currentUser.name;
 
     // Apply RBAC UI Restrictions
-    const restrictedItems = document.querySelectorAll('.sidebar-menu .menu-item[data-view="dashboard"], .sidebar-menu .menu-item[data-view="inventory"], .sidebar-menu .menu-item[data-view="mechanics"], .sidebar-menu .menu-item[data-view="sales-history"], .sidebar-menu .menu-item[data-view="reports"]');
-    if (this.currentUser.role === 'staff') {
+    const allItems = document.querySelectorAll('.sidebar-menu .menu-item');
+    allItems.forEach(item => item.style.display = 'flex');
+
+    if (this.currentUser.role === 'cashier') {
+      const restrictedItems = document.querySelectorAll('.sidebar-menu .menu-item[data-view="dashboard"], .sidebar-menu .menu-item[data-view="mechanics"], .sidebar-menu .menu-item[data-view="reports"]');
       restrictedItems.forEach(item => item.style.display = 'none');
-      this.switchView('pos'); // Default for staff
+      this.switchView('pos'); // Default for cashier
+    } else if (this.currentUser.role === 'mechanic') {
+      const restrictedItems = document.querySelectorAll('.sidebar-menu .menu-item:not([data-view="service"])');
+      restrictedItems.forEach(item => item.style.display = 'none');
+      this.switchView('service'); // Default for mechanic
     } else {
-      restrictedItems.forEach(item => item.style.display = 'flex');
       this.switchView('dashboard'); // Default for admin
     }
 
@@ -496,10 +528,15 @@ class ApexMotoPOS {
       document.body.classList.remove('login-mode');
       
       // RBAC Check
-      if (this.currentUser && this.currentUser.role === 'staff') {
-        const restrictedViews = ['dashboard', 'inventory', 'mechanics', 'sales-history', 'reports'];
+      if (this.currentUser && this.currentUser.role === 'cashier') {
+        const restrictedViews = ['dashboard', 'mechanics', 'reports'];
         if (restrictedViews.includes(viewId)) {
-          this.showToast("Access Denied: Staff cannot access this module.", "danger");
+          this.showToast("Access Denied: Cashiers cannot access this module.", "danger");
+          return;
+        }
+      } else if (this.currentUser && this.currentUser.role === 'mechanic') {
+        if (viewId !== 'service') {
+          this.showToast("Access Denied: Mechanics can only access the Service Board.", "danger");
           return;
         }
       }
@@ -628,14 +665,17 @@ class ApexMotoPOS {
     document.getElementById('dash-sales-breakdown').textContent =
       `${retailTxCount} retail + ${serviceTxCount} service tx`;
 
-    document.getElementById('dash-today-labor').textContent = `₱${laborIncome.toFixed(2)}`;
-    document.getElementById('dash-labor-breakdown').textContent =
-      laborIncome > 0 ? `From ${todayTx.filter(t => (t.items||[]).some(i => i.id === 'labor')).length} job(s)` : 'No labor recorded today';
-
     // Cash Out totals for today
     const todayCashOuts = this.cashOuts.filter(co => new Date(co.date).toDateString() === today);
     const totalCashOut = todayCashOuts.reduce((sum, co) => sum + co.amount, 0);
+    const laborPayoutsToday = todayCashOuts.filter(co => co.reason === 'Mechanic Labor Payout').reduce((sum, co) => sum + co.amount, 0);
     const netIncome = totalIncome - totalCashOut;
+
+    const netLaborIncome = laborIncome - laborPayoutsToday;
+
+    document.getElementById('dash-today-labor').textContent = `₱${netLaborIncome.toFixed(2)}`;
+    document.getElementById('dash-labor-breakdown').textContent =
+      laborIncome > 0 ? `Gross: ₱${laborIncome.toFixed(2)} | Payouts: ₱${laborPayoutsToday.toFixed(2)}` : 'No labor recorded today';
 
     document.getElementById('dash-today-total').textContent = `₱${totalIncome.toFixed(2)}`;
     document.getElementById('dash-total-txcount').textContent =
@@ -721,13 +761,12 @@ class ApexMotoPOS {
     alertsContainer.innerHTML = '';
     
     const warningParts = this.parts.filter(p => p.stock <= p.minStock);
-    const jobsPendingParts = this.serviceJobs.filter(j => j.status === 'Pending Parts');
 
-    if (warningParts.length === 0 && jobsPendingParts.length === 0) {
+    if (warningParts.length === 0) {
       alertsContainer.innerHTML = `
         <div style="text-align: center; padding: 30px 10px; color: var(--text-muted);">
           <div style="font-size: 1.5rem; margin-bottom: 6px;">✓</div>
-          <p style="font-size: 0.8rem;">All motorcycle parts stocked and service bays clear.</p>
+          <p style="font-size: 0.8rem;">All motorcycle parts stocked.</p>
         </div>
       `;
     } else {
@@ -746,19 +785,6 @@ class ApexMotoPOS {
         alertsContainer.appendChild(div);
       });
 
-      // Pending Parts Alerts
-      jobsPendingParts.forEach(j => {
-        const div = document.createElement('div');
-        div.className = 'alert-item';
-        div.innerHTML = `
-          <div>
-            <div style="font-weight: 600; color: var(--warning);">SERVICE BLOCKED</div>
-            <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:2px;">${j.id} for ${j.customerName} awaits parts allocation.</div>
-          </div>
-          <button class="btn btn-secondary btn-sm btn-icon-only" onclick="app.openManageJobModal('${j.id}')">⚙</button>
-        `;
-        alertsContainer.appendChild(div);
-      });
     }
 
     // 5. Dashboard Table (Recent service jobs)
@@ -875,14 +901,63 @@ class ApexMotoPOS {
     document.getElementById('cashout-amount').value = '';
     document.getElementById('cashout-reason').value = '';
     document.getElementById('cashout-notes').value = '';
+    document.getElementById('cashout-mechanic-group').style.display = 'none';
+    
+    // Populate mechanics with balance info
+    const mechSelect = document.getElementById('cashout-mechanic-select');
+    if (mechSelect) {
+      mechSelect.innerHTML = '<option value="">-- Select Mechanic --</option>';
+      this.mechanics.forEach(m => {
+        const laborTotal = (m.laborRecords || []).reduce((sum, lr) => sum + lr.amount, 0);
+        const payouts = this.cashOuts.filter(co => co.reason === 'Mechanic Labor Payout' && co.notes && co.notes.includes(`Mechanic: ${m.name}`));
+        const totalPayout = payouts.reduce((sum, co) => sum + co.amount, 0);
+        const netEarnings = laborTotal - totalPayout;
+        
+        const opt = document.createElement('option');
+        opt.value = m.name;
+        opt.textContent = `${m.name} (Unpaid Balance: ₱${netEarnings.toFixed(2)})`;
+        mechSelect.appendChild(opt);
+      });
+      mechSelect.onchange = () => this.handleMechanicSelectChange();
+    }
+
     this.openModal('modal-cashout');
     setTimeout(() => document.getElementById('cashout-amount').focus(), 150);
+  }
+
+  handleCashOutReasonChange() {
+    const reason = document.getElementById('cashout-reason').value;
+    const mechGroup = document.getElementById('cashout-mechanic-group');
+    if (mechGroup) {
+      mechGroup.style.display = reason === 'Mechanic Labor Payout' ? 'block' : 'none';
+    }
+  }
+
+  handleMechanicSelectChange() {
+    const selectedName = document.getElementById('cashout-mechanic-select').value;
+    const reason = document.getElementById('cashout-reason').value;
+    if (reason === 'Mechanic Labor Payout' && selectedName) {
+      const mech = this.mechanics.find(m => m.name === selectedName);
+      if (mech) {
+        const laborTotal = (mech.laborRecords || []).reduce((sum, lr) => sum + lr.amount, 0);
+        const payouts = this.cashOuts.filter(co => co.reason === 'Mechanic Labor Payout' && co.notes && co.notes.includes(`Mechanic: ${mech.name}`));
+        const totalPayout = payouts.reduce((sum, co) => sum + co.amount, 0);
+        const netEarnings = laborTotal - totalPayout;
+        
+        if (netEarnings > 0) {
+          document.getElementById('cashout-amount').value = netEarnings.toFixed(2);
+        } else {
+          document.getElementById('cashout-amount').value = '0.00';
+          this.showToast(`${mech.name} has no unpaid labor balance (Balance: ₱${netEarnings.toFixed(2)}).`, 'warning');
+        }
+      }
+    }
   }
 
   async submitCashOut() {
     const amount = parseFloat(document.getElementById('cashout-amount').value);
     const reason = document.getElementById('cashout-reason').value.trim();
-    const notes = document.getElementById('cashout-notes').value.trim();
+    let notes = document.getElementById('cashout-notes').value.trim();
 
     if (!amount || amount <= 0) {
       this.showToast('Please enter a valid cash out amount.', 'warning');
@@ -891,6 +966,36 @@ class ApexMotoPOS {
     if (!reason) {
       this.showToast('Please select or enter a reason for cash out.', 'warning');
       return;
+    }
+
+    if (reason === 'Mechanic Labor Payout') {
+      const mechSelect = document.getElementById('cashout-mechanic-select');
+      const selectedMechName = mechSelect.value;
+      if (!selectedMechName) {
+        this.showToast('Please select a mechanic for this payout.', 'warning');
+        return;
+      }
+
+      // Calculate unpaid balance for this mechanic
+      const mech = this.mechanics.find(m => m.name === selectedMechName);
+      if (mech) {
+        const laborTotal = (mech.laborRecords || []).reduce((sum, lr) => sum + lr.amount, 0);
+        const payouts = this.cashOuts.filter(co => co.reason === 'Mechanic Labor Payout' && co.notes && co.notes.includes(`Mechanic: ${mech.name}`));
+        const totalPayout = payouts.reduce((sum, co) => sum + co.amount, 0);
+        const currentNetEarnings = laborTotal - totalPayout;
+
+        if (currentNetEarnings <= 0) {
+          this.showToast(`Cannot process payout: ${mech.name} has no unpaid labor balance (Current balance: ₱${currentNetEarnings.toFixed(2)}).`, 'danger');
+          return;
+        }
+
+        if (amount > currentNetEarnings) {
+          this.showToast(`Payout amount (₱${amount.toFixed(2)}) exceeds mechanic's unpaid balance of ₱${currentNetEarnings.toFixed(2)}.`, 'warning');
+          return;
+        }
+      }
+
+      notes = `Mechanic: ${selectedMechName}\n${notes}`.trim();
     }
 
     const entry = {
@@ -905,13 +1010,138 @@ class ApexMotoPOS {
       const savedId = await DB.createCashOut(entry);
       entry.id = savedId || entry.id;
       this.cashOuts.push(entry);
+
+      if (reason === 'Mechanic Labor Payout') {
+        const mechSelect = document.getElementById('cashout-mechanic-select');
+        const payoutTx = {
+          id: 'TX-PAY-' + Date.now(),
+          type: "Payout",
+          customerId: null,
+          customerName: mechSelect ? mechSelect.value : "Mechanic",
+          items: [{ id: "payout", name: "Labor Payout", quantity: 1, price: -amount }],
+          subtotal: -amount,
+          discount: 0,
+          total: -amount,
+          paymentMethod: "Cash Out",
+          amountTendered: 0,
+          changeDue: 0,
+          referenceNo: entry.id,
+          date: entry.date
+        };
+        await DB.createTransaction(payoutTx).catch(e => console.warn('Could not save payout tx', e));
+        this.transactions.push(payoutTx);
+      }
+
       this.closeModal('modal-cashout');
       this.renderDashboard();
+      this.renderMechanicList();
       this.showToast(`Cash out of ₱${amount.toFixed(2)} recorded.`, 'success');
+      this.generateCashOutReceiptHTML(entry);
+      this.openModal('modal-receipt');
     } catch (err) {
       console.error(err);
       this.showToast('Failed to save cash out: ' + err.message, 'danger');
     }
+  }
+
+  payoutMechanic(mechanicName, amount) {
+    if (!amount || amount <= 0) {
+      this.showToast('No outstanding earnings available for payout to this mechanic.', 'warning');
+      return;
+    }
+    
+    this.openCashOutModal();
+    
+    // Set values after modal opens
+    setTimeout(() => {
+      document.getElementById('cashout-reason').value = 'Mechanic Labor Payout';
+      this.handleCashOutReasonChange();
+      const mechSelect = document.getElementById('cashout-mechanic-select');
+      if (mechSelect) mechSelect.value = mechanicName;
+      document.getElementById('cashout-amount').value = amount.toFixed(2);
+    }, 10);
+  }
+
+  generateCashOutReceiptHTML(cashOut) {
+    const container = document.getElementById('print-receipt-container');
+    const screenContainer = document.getElementById('screen-receipt-content');
+    if (!container) return;
+    
+    // Hide barcode containers if any
+    const barcodeContainer = document.getElementById('print-barcode-container');
+    const massBarcodeContainer = document.getElementById('print-all-barcodes-container');
+    if (barcodeContainer) barcodeContainer.style.display = 'none';
+    if (massBarcodeContainer) massBarcodeContainer.style.display = 'none';
+    
+    // Ensure we don't accidentally show it on screen, let @media print handle visibility
+    container.style.display = '';
+
+    const dateStr = new Date(cashOut.date).toLocaleString();
+
+    const S = {
+      row:    `display:flex; justify-content:space-between; margin-bottom:3px;`,
+      bold:   `font-weight:bold;`,
+      divider:`border:none; border-top:1px dashed #000; margin:7px 0;`,
+      divDbl: `border:none; border-top:3px double #000; margin:7px 0;`,
+    };
+
+    let itemsHTML = '';
+    
+    if (cashOut.reason === 'Mechanic Labor Payout') {
+      const match = cashOut.notes ? cashOut.notes.match(/^Mechanic:\s*(.+?)(?:\n|$)/) : null;
+      if (match) {
+        const mechanicName = match[1].trim();
+        const mechanic = this.mechanics.find(m => m.name === mechanicName);
+        if (mechanic && mechanic.laborRecords && mechanic.laborRecords.length > 0) {
+          itemsHTML += `<div style="${S.bold} margin-bottom:6px;">SERVICES DONE:</div>`;
+          let sumServices = 0;
+          mechanic.laborRecords.forEach(lr => {
+            sumServices += lr.amount;
+            itemsHTML += `<div style="${S.row}">`
+              + `<span style="flex:1; padding-right:10px; font-size: 12px;">${lr.description}</span>`
+              + `<span>₱${lr.amount.toFixed(2)}</span>`
+              + `</div>`;
+          });
+          itemsHTML += `<hr style="${S.divider}">`;
+          itemsHTML += `<div style="${S.row}"><span>Total Services Earned:</span><span>₱${sumServices.toFixed(2)}</span></div>`;
+        }
+      }
+    }
+
+    if (!itemsHTML && cashOut.notes) {
+      itemsHTML += `<div style="${S.bold} margin-bottom:6px;">NOTES:</div>`;
+      itemsHTML += `<div style="font-size:12px; white-space:pre-wrap;">${cashOut.notes}</div>`;
+    }
+
+    let html = `
+      <div style="font-family:'Courier New',Courier,monospace; font-size:13px; color:#000; background:#fff; line-height:1.5;">
+        <div style="text-align:center; margin-bottom:12px;">
+          <div style="font-size:15px; font-weight:bold;">DIEGO'S</div>
+          <div style="font-size:11px; margin-top:2px;">Motorcycle Parts &amp; Accessories</div>
+          <div style="font-size:10px; margin-top:2px;">brgy.ganaderia , palayan city</div>
+        </div>
+        <hr style="${S.divider}">
+        <div style="${S.row}"><span>Voucher ID:</span><span style="${S.bold} word-break:break-all; text-align:right; max-width:60%;">${cashOut.id}</span></div>
+        <div style="${S.row}"><span>Date:</span><span>${dateStr}</span></div>
+        <div style="${S.row}"><span>Reason:</span><span style="${S.bold}">${cashOut.reason}</span></div>
+        <hr style="${S.divider}">
+        ${itemsHTML}
+        <hr style="${S.divDbl}">
+        <div style="${S.row} ${S.bold} font-size:14px;"><span>AMOUNT PAID:</span><span>₱${cashOut.amount.toFixed(2)}</span></div>
+        <hr style="${S.divider}">
+        <div style="display:flex; justify-content:space-between; margin-top:30px;">
+          <div style="width:45%; border-top:1px solid #000; padding-top:5px; font-size:11px; text-align:center;">Prepared By</div>
+          <div style="width:45%; border-top:1px solid #000; padding-top:5px; font-size:11px; text-align:center;">Received By</div>
+        </div>
+        <div style="text-align:center; margin-top:14px; font-weight:bold; font-size:11px;">
+          *** System Generated ***
+        </div>
+      </div>
+    `;
+    
+    if (container) container.innerHTML = html;
+    if (screenContainer) screenContainer.innerHTML = html;
+    return html;
   }
 
   openEntryCapitalModal() {
@@ -1006,12 +1236,14 @@ class ApexMotoPOS {
       return d >= start && d <= end;
     });
     const totalCashOut = periodCashOuts.reduce((sum, c) => sum + c.amount, 0);
+    const periodLaborPayouts = periodCashOuts.filter(c => c.reason === 'Mechanic Labor Payout').reduce((sum, c) => sum + c.amount, 0);
 
     const netTotal = (grossSales + totalLabor) - totalCashOut;
+    const netLabor = totalLabor - periodLaborPayouts;
 
     // Update DOM
     if (document.getElementById('report-gross-sales')) document.getElementById('report-gross-sales').textContent = `₱${grossSales.toFixed(2)}`;
-    if (document.getElementById('report-total-labor')) document.getElementById('report-total-labor').textContent = `₱${totalLabor.toFixed(2)}`;
+    if (document.getElementById('report-total-labor')) document.getElementById('report-total-labor').textContent = `₱${netLabor.toFixed(2)}`;
     if (document.getElementById('report-total-cashouts')) document.getElementById('report-total-cashouts').textContent = `₱${totalCashOut.toFixed(2)}`;
     if (document.getElementById('report-net-total')) document.getElementById('report-net-total').textContent = `₱${netTotal.toFixed(2)}`;
   }
@@ -1314,6 +1546,27 @@ class ApexMotoPOS {
     document.getElementById('cart-count').textContent = `${totalQty} Item${totalQty > 1 ? 's' : ''}`;
 
     this.cart.forEach(item => {
+      if (item.isLabor) {
+        const itemTotal = item.price * item.quantity;
+        const card = document.createElement('div');
+        card.className = 'cart-item labor-cart-item';
+        card.style.background = 'rgba(255, 179, 0, 0.08)';
+        card.style.borderLeft = '3px solid var(--warning)';
+        card.innerHTML = `
+          <span class="qty-val" style="background: rgba(255,179,0,0.2); color: var(--warning); padding: 4px 8px; border-radius: 4px; font-weight: 700;">🛠️</span>
+          <div class="cart-item-name" style="line-height: 1.2;">
+            <div style="font-weight: 600;">${item.name}</div>
+            <div style="font-size: 0.75rem; color: var(--accent);">Assigned: ${item.mechanicName}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; line-height: 1.15;">
+            <div class="cart-item-total">₱${itemTotal.toFixed(2)}</div>
+          </div>
+          <button class="cart-item-remove" onclick="app.removeFromCart('${item.id}')" title="Remove">×</button>
+        `;
+        container.appendChild(card);
+        return;
+      }
+
       const part = this.parts.find(p => p.id === item.partId);
       if (!part) return;
 
@@ -1332,7 +1585,7 @@ class ApexMotoPOS {
           <div class="cart-item-price">${part.price.toFixed(2)}</div>
         </div>
         
-        <button class="cart-item-remove" onclick="app.removeFromCart('${part.id}')" title="Remove">V</button>
+        <button class="cart-item-remove" onclick="app.removeFromCart('${part.id}')" title="Remove">×</button>
       `;
       container.appendChild(card);
     });
@@ -1341,13 +1594,19 @@ class ApexMotoPOS {
   }
 
   calculateCartTotals() {
-    let subtotal = 0;
+    let partsTotal = 0;
+    
     this.cart.forEach(item => {
       const part = this.parts.find(p => p.id === item.partId);
       if (part) {
-        subtotal += part.price * item.quantity;
+        partsTotal += part.price * item.quantity;
       }
     });
+
+    const laborInput = document.getElementById('cart-labor-fee-input');
+    const laborTotal = parseFloat(laborInput ? laborInput.value : 0) || 0;
+
+    const subtotal = partsTotal + laborTotal;
 
     const discountInput = document.getElementById('cart-discount-input');
     let discount = parseFloat(discountInput ? discountInput.value : 0) || 0;
@@ -1359,6 +1618,21 @@ class ApexMotoPOS {
 
     const grandTotal = Math.max(0, subtotal - discount);
 
+    // Update UI elements
+    const partsEl = document.getElementById('cart-subtotal-parts');
+    if (partsEl) partsEl.textContent = `₱${partsTotal.toFixed(2)}`;
+    
+    const laborRow = document.getElementById('cart-labor-row');
+    const laborEl = document.getElementById('cart-labor-total');
+    if (laborRow && laborEl) {
+      if (laborTotal > 0) {
+        laborRow.style.display = 'flex';
+        laborEl.textContent = `₱${laborTotal.toFixed(2)}`;
+      } else {
+        laborRow.style.display = 'none';
+      }
+    }
+
     document.getElementById('cart-subtotal').textContent = `₱${subtotal.toFixed(2)}`;
     document.getElementById('cart-total').textContent = `₱${grandTotal.toFixed(2)}`;
     this.broadcastToCustomerDisplay(this.cart.length > 0 ? 'cart-updating' : 'welcome');
@@ -1366,7 +1640,7 @@ class ApexMotoPOS {
 
   // --- Service Board Kanban Renderer ---
   renderServiceBoard() {
-    const statuses = ['Draft', 'Pending Parts', 'In Progress', 'Testing', 'Ready'];
+    const statuses = ['Draft', 'In Progress', 'Ready'];
     const searchVal = document.getElementById('service-search-input').value.toLowerCase().trim();
 
     // Reset columns
@@ -1377,10 +1651,18 @@ class ApexMotoPOS {
       if (countEl) countEl.textContent = '0';
     });
 
-    const counts = { Draft: 0, 'Pending Parts': 0, 'In Progress': 0, Testing: 0, Ready: 0 };
+    const counts = { Draft: 0, 'In Progress': 0, Ready: 0 };
 
     // Filter jobs
     let filteredJobs = this.serviceJobs;
+
+    // RBAC: Mechanic filter
+    if (this.currentUser && this.currentUser.role === 'mechanic') {
+      filteredJobs = filteredJobs.filter(j => 
+        j.mechanic === this.currentUser.name || !j.mechanic || j.mechanic.toLowerCase() === 'unassigned' || j.mechanic === ''
+      );
+    }
+
     if (searchVal) {
       filteredJobs = filteredJobs.filter(j => 
         j.customerName.toLowerCase().includes(searchVal) || 
@@ -1399,6 +1681,15 @@ class ApexMotoPOS {
 
       const card = document.createElement('div');
       card.className = 'job-card';
+      card.draggable = true;
+      card.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', job.id);
+        card.classList.add('dragging');
+      });
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+      });
+      
       card.addEventListener('click', (e) => {
         // Prevent opening modal if clicking on the parts toggle or breakdown
         if (e.target.closest('.parts-toggle-btn') || e.target.closest('.parts-breakdown-list')) {
@@ -1467,12 +1758,33 @@ class ApexMotoPOS {
   getStatusBadge(status) {
     switch (status) {
       case 'Draft': return `<span class="badge badge-secondary">Intake</span>`;
-      case 'Pending Parts': return `<span class="badge badge-danger">Awaiting Parts</span>`;
       case 'In Progress': return `<span class="badge badge-warning">Active Lift</span>`;
-      case 'Testing': return `<span class="badge badge-info">Road Testing</span>`;
       case 'Ready': return `<span class="badge badge-success">Ready / Complete</span>`;
       case 'Completed': return `<span class="badge badge-success">Picked Up</span>`;
       default: return `<span class="badge badge-secondary">${status}</span>`;
+    }
+  }
+
+  async updateJobStatusViaDrag(jobId, newStatus) {
+    const job = this.serviceJobs.find(j => j.id === jobId);
+    if (!job) return;
+    if (job.status === newStatus) return;
+
+    const oldStatus = job.status;
+    job.status = newStatus;
+    job.dateUpdated = new Date().toISOString();
+
+    this.showLoadingOverlay(true);
+    try {
+      await DB.updateServiceJob(job);
+      this.showLoadingOverlay(false);
+      this.showToast(`Work order ${jobId} status updated to: ${newStatus}`, "success");
+      this.renderServiceBoard();
+      this.broadcastToCustomerDisplay(this.cart.length > 0 ? 'cart-updating' : 'welcome');
+    } catch (err) {
+      this.showLoadingOverlay(false);
+      job.status = oldStatus; // Rollback
+      this.showToast("Database error: " + err.message, "danger");
     }
   }
 
@@ -2285,6 +2597,10 @@ class ApexMotoPOS {
   }
 
   async deletePart(partId) {
+    if (this.currentUser.role !== 'admin') {
+      this.showToast("Access Denied: Only Admins can delete parts.", "danger");
+      return;
+    }
     const part = this.parts.find(p => p.id === partId);
     if (!part) return;
     if (confirm(`Are you sure you want to delete ${part.name}?`)) {
@@ -2411,6 +2727,10 @@ class ApexMotoPOS {
   }
 
   async deleteCustomer(custId) {
+    if (this.currentUser.role !== 'admin') {
+      this.showToast("Access Denied: Only Admins can delete customers.", "danger");
+      return;
+    }
     const cust = this.customers.find(c => c.id === custId);
     if (!cust) return;
     if (confirm(`Delete CRM profile for ${cust.name}? This will NOT delete past sales records.`)) {
@@ -2461,6 +2781,10 @@ class ApexMotoPOS {
   }
 
   async removeCustomerVehicle(vehicleIndex) {
+    if (this.currentUser.role !== 'admin') {
+      this.showToast("Access Denied: Only Admins can delete vehicles.", "danger");
+      return;
+    }
     const custIndex = this.customers.findIndex(c => c.id === this.editingCustomerId);
     if (custIndex !== -1) {
       const bike = this.customers[custIndex].vehicles[vehicleIndex];
@@ -2526,10 +2850,117 @@ class ApexMotoPOS {
     this.renderPOSCart();
   }
 
-  removeFromCart(partId) {
-    this.cart = this.cart.filter(item => item.partId !== partId);
+  removeFromCart(id) {
+    this.cart = this.cart.filter(item => item.partId !== id && item.id !== id);
     this.showToast("Item removed from order", "info");
     this.renderPOSCart();
+  }
+
+  openPOSLaborModal() {
+    document.getElementById('pos-labor-desc').value = '';
+    document.getElementById('pos-labor-amount').value = '';
+    
+    const select = document.getElementById('pos-labor-mechanic-select');
+    if (select) {
+      select.innerHTML = '<option value="">-- Select Mechanic --</option>';
+      this.mechanics.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.name;
+        select.appendChild(opt);
+      });
+      
+      // Auto pre-select if cart-mechanic-select has a selected mechanic
+      const cartMechSelect = document.getElementById('cart-mechanic-select');
+      if (cartMechSelect && cartMechSelect.value) {
+        select.value = cartMechSelect.value;
+      }
+    }
+    
+    this.openModal('modal-pos-labor');
+    setTimeout(() => document.getElementById('pos-labor-desc').focus(), 150);
+  }
+
+  addLaborToPOSCart() {
+    const desc = document.getElementById('pos-labor-desc').value.trim();
+    const amount = parseFloat(document.getElementById('pos-labor-amount').value);
+    const mechanicId = document.getElementById('pos-labor-mechanic-select').value;
+
+    if (!desc) {
+      this.showToast('Please enter a labor/service description.', 'warning');
+      return;
+    }
+    if (!amount || amount <= 0) {
+      this.showToast('Please enter a valid labor fee.', 'warning');
+      return;
+    }
+    if (!mechanicId) {
+      this.showToast('Please select a mechanic for this labor.', 'warning');
+      return;
+    }
+
+    const mechanic = this.mechanics.find(m => m.id === mechanicId);
+    const laborId = 'LABOR-' + Date.now();
+
+    const laborCartItem = {
+      id: laborId,
+      partId: laborId,
+      isLabor: true,
+      name: `Labor: ${desc}`,
+      description: desc,
+      price: amount,
+      quantity: 1,
+      mechanicId: mechanic.id,
+      mechanicName: mechanic.name
+    };
+
+    this.cart.push(laborCartItem);
+    this.closeModal('modal-pos-labor');
+    this.renderPOSCart();
+    this.showToast(`Labor (${desc} — ${mechanic.name}) added to cart!`, 'success');
+  }
+
+  addInlineLaborToCart() {
+    const mechSelect = document.getElementById('cart-mechanic-select');
+    const feeInput = document.getElementById('cart-labor-fee-input');
+    const descInput = document.getElementById('pos-inline-labor-desc');
+
+    const mechanicId = mechSelect ? mechSelect.value : '';
+    const amount = parseFloat(feeInput ? feeInput.value : 0) || 0;
+    const desc = descInput ? descInput.value.trim() : '';
+
+    if (!mechanicId) {
+      this.showToast('Please select a mechanic from the dropdown first.', 'warning');
+      return;
+    }
+    if (amount <= 0) {
+      this.showToast('Please enter a labor fee amount in ₱.', 'warning');
+      return;
+    }
+
+    const mechanic = this.mechanics.find(m => m.id === mechanicId);
+    if (!mechanic) return;
+
+    const laborId = 'LABOR-' + Date.now();
+    const laborCartItem = {
+      id: laborId,
+      partId: laborId,
+      isLabor: true,
+      name: `Labor: ${desc || 'Service Fee'}`,
+      description: desc || 'Service Fee',
+      price: amount,
+      quantity: 1,
+      mechanicId: mechanic.id,
+      mechanicName: mechanic.name
+    };
+
+    this.cart.push(laborCartItem);
+    
+    if (feeInput) feeInput.value = '';
+    if (descInput) descInput.value = '';
+
+    this.renderPOSCart();
+    this.showToast(`Labor added to sale: ₱${amount.toFixed(2)} (${mechanic.name})`, 'success');
   }
 
   clearCart() {
@@ -2720,9 +3151,8 @@ class ApexMotoPOS {
     let subtotal = 0;
     let grandTotal = 0;
 
-    const laborFee = parseFloat(document.getElementById('checkout-labor-fee').value) || 0;
-
     if (this.activeJobId && this.activeView === 'service') {
+      const laborFee = parseFloat(document.getElementById('checkout-labor-fee').value) || 0;
       const job = this.serviceJobs.find(j => j.id === this.activeJobId);
       if (job) {
         const partsTotal = job.parts.reduce((sum, p) => sum + (p.price * p.quantity), 0);
@@ -2731,6 +3161,7 @@ class ApexMotoPOS {
       }
     } else {
       // Retail POS cart
+      const cartLaborFee = parseFloat(document.getElementById('cart-labor-fee-input').value) || 0;
       const cartSubtotal = this.cart.reduce((sum, item) => {
         const p = this.parts.find(part => part.id === item.partId);
         return sum + (p ? p.price * item.quantity : 0);
@@ -2739,7 +3170,7 @@ class ApexMotoPOS {
       const discountInput = document.getElementById('cart-discount-input');
       const discount = parseFloat(discountInput ? discountInput.value : 0) || 0;
 
-      subtotal = cartSubtotal + laborFee;
+      subtotal = cartSubtotal + cartLaborFee;
       grandTotal = Math.max(0, subtotal - discount);
     }
 
@@ -3080,94 +3511,52 @@ class ApexMotoPOS {
 
   populateManageJobPartsDropdown() {
     // Now populates the category dropdown and renders the card grid
-    this.populateJobPartCategories();
-    this.renderJobPartPicker();
   }
 
-  populateJobPartCategories() {
-    const catSelect = document.getElementById('job-part-category');
-    if (!catSelect) return;
-    catSelect.innerHTML = '<option value="All">All Categories</option>';
-    const categories = [...new Set(this.parts.map(p => p.category))].sort();
-    categories.forEach(cat => {
-      const opt = document.createElement('option');
-      opt.value = cat;
-      opt.textContent = cat;
-      catSelect.appendChild(opt);
-    });
-  }
+  handleJobPartSearchInput(event) {
+    const query = (event.target.value || '').toLowerCase().trim();
+    if (!query) return;
 
-  renderJobPartPicker() {
-    const grid = document.getElementById('job-part-picker-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-
-    const query = (document.getElementById('job-part-search')?.value || '').toLowerCase().trim();
-    if (!query) {
-      grid.style.display = 'none';
-      return;
+    let partToAdd = this.parts.find(p => p.sku.toLowerCase() === query);
+    
+    // If no exact SKU match, check if there is an exact name match
+    if (!partToAdd) {
+      const nameMatches = this.parts.filter(p => p.name.toLowerCase() === query);
+      if (nameMatches.length === 1) {
+        partToAdd = nameMatches[0];
+      }
     }
-    grid.style.display = 'grid';
 
-    const category = document.getElementById('job-part-category')?.value || 'All';
+    if (partToAdd && partToAdd.stock > 0) {
+      this.addPartToJob(partToAdd.id);
+      event.target.value = '';
+    }
+  }
 
-    let filtered = this.parts;
-    if (category !== 'All') filtered = filtered.filter(p => p.category === category);
-    if (query) {
-      filtered = filtered.filter(p =>
+  handleJobPartSearchKey(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const query = (event.target.value || '').toLowerCase().trim();
+      if (!query) return;
+
+      let filtered = this.parts.filter(p =>
         p.name.toLowerCase().includes(query) ||
-        p.sku.toLowerCase().includes(query) ||
-        p.category.toLowerCase().includes(query)
+        p.sku.toLowerCase().includes(query)
       );
-    }
 
-    if (filtered.length === 0) {
-      grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--text-muted);font-size:0.85rem;">No parts found. Try a different search.</div>`;
-      return;
-    }
-
-    // Get current job to check already-allocated parts
-    const job = this.serviceJobs.find(j => j.id === this.activeJobId);
-    const allocatedIds = job ? job.parts.map(p => p.partId) : [];
-
-    filtered.forEach(p => {
-      const isOut = p.stock === 0;
-      const isAllocated = allocatedIds.includes(p.id);
-      const allocatedQty = isAllocated ? job.parts.find(jp => jp.partId === p.id)?.quantity || 0 : 0;
-
-      const card = document.createElement('div');
-      card.style.cssText = `
-        background: var(--bg-surface); border: 1px solid ${isOut ? 'rgba(231,76,60,0.3)' : isAllocated ? 'var(--accent)' : 'var(--border-color)'};
-        border-radius: 8px; padding: 10px; cursor: ${isOut ? 'not-allowed' : 'pointer'};
-        opacity: ${isOut ? '0.5' : '1'}; transition: all 0.2s;
-        display: flex; flex-direction: column; gap: 4px;
-      `;
-
-      let stockBadge = `<span style="font-size:0.68rem;padding:2px 6px;border-radius:12px;background:rgba(46,204,113,0.15);color:var(--success);font-weight:600;">${p.stock} avail</span>`;
-      if (isOut) stockBadge = `<span style="font-size:0.68rem;padding:2px 6px;border-radius:12px;background:rgba(231,76,60,0.15);color:var(--danger);font-weight:600;">Out</span>`;
-
-      card.innerHTML = `
-        <div style="font-size:0.68rem;color:var(--text-secondary);font-family:monospace;letter-spacing:0.3px;">${p.sku}</div>
-        <div style="font-size:0.8rem;font-weight:600;line-height:1.2;flex-grow:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${p.name}">${p.name}</div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
-          <div style="font-size:0.85rem;font-weight:700;color:var(--accent);">₱${p.price.toFixed(2)}</div>
-          ${stockBadge}
-        </div>
-        ${isAllocated ? `<div style="font-size:0.7rem;text-align:center;padding:3px;background:rgba(var(--accent-rgb,255,95,31),0.1);border-radius:4px;color:var(--accent);margin-top:2px;">✓ Allocated (${allocatedQty})</div>` : ''}
-      `;
-
-      if (!isOut) {
-        card.addEventListener('click', () => {
-          this.addPartToJob(p.id);
-          card.classList.add('item-added');
-          setTimeout(() => card.classList.remove('item-added'), 400);
-        });
-        card.addEventListener('mouseenter', () => { card.style.borderColor = 'var(--accent)'; card.style.transform = 'translateY(-2px)'; });
-        card.addEventListener('mouseleave', () => { card.style.borderColor = isAllocated ? 'var(--accent)' : 'var(--border-color)'; card.style.transform = ''; });
+      let partToAdd = null;
+      const exactSkuMatch = filtered.find(p => p.sku.toLowerCase() === query);
+      if (exactSkuMatch) {
+        partToAdd = exactSkuMatch;
+      } else if (filtered.length === 1) {
+        partToAdd = filtered[0];
       }
 
-      grid.appendChild(card);
-    });
+      if (partToAdd && partToAdd.stock > 0) {
+        this.addPartToJob(partToAdd.id);
+        event.target.value = '';
+      }
+    }
   }
 
   renderJobAllocatedPartsList(job) {
@@ -3352,6 +3741,10 @@ class ApexMotoPOS {
   }
 
   async deleteWorkOrder() {
+    if (this.currentUser.role !== 'admin') {
+      this.showToast("Access Denied: Only Admins can delete work orders.", "danger");
+      return;
+    }
     if (confirm("Permanently cancel and delete this work order? Any allocated parts will be returned to inventory.")) {
       const job = this.serviceJobs.find(j => j.id === this.activeJobId);
       if (!job) return;
@@ -3380,6 +3773,18 @@ class ApexMotoPOS {
   invoiceAndPayWorkOrder() {
     const job = this.serviceJobs.find(j => j.id === this.activeJobId);
     if (!job) return;
+
+    // Read current form values from the modal
+    const newStatus = document.getElementById('manage-job-status').value;
+    const mechanicName = document.getElementById('manage-job-mechanic').value;
+    const desc = document.getElementById('manage-job-desc').value.trim();
+    const labor = parseFloat(document.getElementById('manage-job-labor').value) || 0;
+
+    // Update in-memory job object so changes are reflected in checkout
+    job.status = newStatus;
+    job.mechanic = mechanicName;
+    job.description = desc;
+    job.laborCost = labor;
 
     if (job.status !== 'Ready') {
       this.showToast("Can only finalize work orders in 'Ready' status!", "warning");
@@ -3524,6 +3929,11 @@ class ApexMotoPOS {
     } else {
       // --- REGULAR RETAIL SALES CHECKOUT ROUTING ---
       const itemsRecord = [];
+      
+      const cartLaborFee = parseFloat(document.getElementById('cart-labor-fee-input').value) || 0;
+      const cartMechanicId = document.getElementById('cart-mechanic-select').value;
+      const cartMechanic = this.mechanics.find(m => m.id === cartMechanicId);
+
       this.cart.forEach(cartItem => {
         const part = this.parts.find(p => p.id === cartItem.partId);
         if (part) {
@@ -3533,36 +3943,31 @@ class ApexMotoPOS {
         }
       });
       
-      if (checkoutLaborFee > 0) {
-        itemsRecord.push({ id: "labor", name: `Labor: ${mechanic ? mechanic.name : 'General'}`, quantity: 1, price: checkoutLaborFee });
+      if (cartLaborFee > 0) {
+        itemsRecord.push({ id: "labor", name: `Labor: ${cartMechanic ? cartMechanic.name : 'General'}`, quantity: 1, price: cartLaborFee });
       }
 
-      const laborSubtotal = subtotal + checkoutLaborFee;
-      
       transactionRecord = {
         id: txId, type: "Retail",
         customerId: this.selectedCustomer ? this.selectedCustomer.id : null,
         customerName: this.selectedCustomer ? this.selectedCustomer.name : "Walk-in Customer",
-        items: itemsRecord, subtotal: laborSubtotal, discount,
+        items: itemsRecord, subtotal: subtotal + cartLaborFee, discount,
         total: totalVal, paymentMethod, 
         amountTendered: cashReceived, changeDue: changeDue, referenceNo: referenceNo, date: new Date().toISOString()
       };
 
       // --- AUTO-RECORD LABOR TO MECHANIC ---
-      if (checkoutLaborFee > 0 && mechanic) {
+      if (cartLaborFee > 0 && cartMechanic) {
         const laborRecord = {
           description: `Retail POS Labor: ${transactionRecord.customerName}`,
-          amount: checkoutLaborFee,
+          amount: cartLaborFee,
           date: new Date().toISOString().split('T')[0]
         };
         try {
-          const recordId = await DB.addLaborRecord(mechanic.id, laborRecord);
-          if (!mechanic.laborRecords) mechanic.laborRecords = [];
-          const exists = mechanic.laborRecords.some(r => r.id === recordId || (r.description === laborRecord.description && r.date === laborRecord.date && r.amount === laborRecord.amount));
-          if (!exists) {
-            mechanic.laborRecords.push({ ...laborRecord, id: recordId });
-          }
-        } catch (e) { console.warn('Could not record labor for mechanic:', e); }
+          const recordId = await DB.addLaborRecord(cartMechanic.id, laborRecord);
+          if (!cartMechanic.laborRecords) cartMechanic.laborRecords = [];
+          cartMechanic.laborRecords.push({ ...laborRecord, id: recordId });
+        } catch (e) { console.warn('Could not record retail labor for mechanic:', e); }
       }
     }
 
@@ -3767,15 +4172,7 @@ class ApexMotoPOS {
     );
 
     if (part) {
-      // If matched via alias, show which item it resolved to
-      const matchedViaAlias = p =>
-        p.sku.toLowerCase() !== sku.toLowerCase() &&
-        (p.altBarcodes || []).some(b => b.toLowerCase() === sku.toLowerCase());
-      const label = matchedViaAlias(part)
-        ? `Scanned alias → ${part.name}`
-        : `Scanned: ${part.sku}`;
       this.addToCart(part.id);
-      this.showToast(label, "success");
     } else {
       // If in barcode capture mode for alt barcodes, intercept
       if (this._capturingAltBarcode) {
@@ -3999,6 +4396,21 @@ class ApexMotoPOS {
         `;
       }).join('');
 
+      // Deduct mechanic labor payouts from cashOuts
+      const payouts = this.cashOuts.filter(co => co.reason === 'Mechanic Labor Payout' && co.notes && co.notes.includes(`Mechanic: ${mech.name}`));
+      const totalPayout = payouts.reduce((sum, co) => sum + co.amount, 0);
+      const netEarnings = laborTotal - totalPayout;
+
+      // Color coding for balance display: green if positive, red if overpaid (negative), gray if fully settled (0)
+      let balanceColor = 'var(--success)';
+      if (netEarnings < 0) balanceColor = 'var(--danger)';
+      else if (netEarnings === 0) balanceColor = 'var(--text-secondary)';
+
+      // Payout Button: Disable if balance <= 0
+      const payoutBtnHtml = netEarnings > 0 
+        ? `<button class="btn btn-success btn-sm" style="flex: 1;" onclick="app.payoutMechanic('${mech.name.replace(/'/g, "\\'")}', ${netEarnings})">Payout</button>`
+        : `<button class="btn btn-secondary btn-sm" style="flex: 1; opacity: 0.5; cursor: not-allowed;" disabled title="All labor earnings fully paid out">Paid Out</button>`;
+
       const card = document.createElement('div');
       card.className = 'card';
       card.style.padding = '20px';
@@ -4011,7 +4423,10 @@ class ApexMotoPOS {
             <h3 style="margin: 0; font-size: 1.3rem;">${mech.name}</h3>
             <div style="color: var(--text-secondary); font-size: 0.9rem;">${mech.role || 'Mechanic'}</div>
           </div>
-          <div style="font-size: 1.2rem; font-weight: bold; color: var(--success);">₱${laborTotal.toFixed(2)}</div>
+          <div style="text-align: right;">
+            <div style="font-size: 1.2rem; font-weight: bold; color: ${balanceColor};">₱${netEarnings.toFixed(2)}</div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">Earned: ₱${laborTotal.toFixed(2)} | Payouts: ₱${totalPayout.toFixed(2)}</div>
+          </div>
         </div>
         
         <div style="margin-top: 16px; flex-grow: 1;">
@@ -4021,7 +4436,8 @@ class ApexMotoPOS {
           </div>
         </div>
         
-        <div style="margin-top: 16px; display: flex; gap: 8px;">
+        <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
+          ${payoutBtnHtml}
           <button class="btn btn-primary btn-sm" style="flex: 1;" onclick="app.openLaborModal('${mech.id}')">Add Labor</button>
           <button class="btn btn-secondary btn-sm" style="flex: 1;" onclick="app.openMechanicModal('${mech.id}')">Edit</button>
           <button class="btn btn-danger btn-sm" onclick="app.deleteMechanic('${mech.id}')">
@@ -4073,6 +4489,10 @@ class ApexMotoPOS {
   }
 
   async deleteMechanic(id) {
+    if (this.currentUser.role !== 'admin') {
+      this.showToast("Access Denied: Only Admins can delete mechanics.", "danger");
+      return;
+    }
     if (!confirm('Are you sure you want to delete this mechanic?')) return;
     try {
       await DB.deleteMechanic(id);
@@ -4135,6 +4555,10 @@ class ApexMotoPOS {
   }
 
   async deleteLaborRecord(mechanicId, recordId) {
+    if (this.currentUser.role !== 'admin') {
+      this.showToast("Access Denied: Only Admins can delete labor records.", "danger");
+      return;
+    }
     if (!confirm('Delete this labor record?')) return;
     try {
       await DB.deleteLaborRecord(mechanicId, recordId);
@@ -4305,6 +4729,42 @@ class ApexMotoPOS {
       printContainer.innerHTML = '';
       document.getElementById('modal-past-receipt').style.display = 'flex';
     }, 1000);
+  }
+
+  async clearAllSalesData() {
+    if (this.currentUser && this.currentUser.role !== 'admin') {
+      this.showToast("Access Denied: Only Admins can clear sales data.", "danger");
+      return;
+    }
+
+    if (!confirm("ARE YOU ABSOLUTELY SURE?\n\nThis will permanently delete all sales transactions, transaction items, cash out logs, and entry capital records!\n\nThis action CANNOT be undone!")) {
+      return;
+    }
+
+    this.showLoadingOverlay(true);
+    try {
+      await DB.deleteAllSalesData();
+      
+      // Reset local state
+      this.transactions = [];
+      this.cashOuts = [];
+      this.entryCapitals = [];
+      
+      // Reload fresh data from database
+      await this.loadData();
+      
+      this.showLoadingOverlay(false);
+      this.showToast("All sales data cleared successfully!", "success");
+      
+      // Refresh UI panels
+      this.renderDashboard();
+      this.renderSalesHistory();
+      if (typeof this.renderReports === 'function') this.renderReports();
+    } catch (err) {
+      this.showLoadingOverlay(false);
+      console.error('clearAllSalesData error:', err);
+      this.showToast("Failed to clear sales data: " + (err.message || err), "danger");
+    }
   }
 
 }

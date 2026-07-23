@@ -272,3 +272,279 @@ label { display: block; font-size: 0.85rem; color: var(--text-secondary); margin
 .toast.success { border-left-color: var(--success); }
 .toast.danger { border-left-color: var(--danger); }
 @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* Stock Staff Portal & Header Badge */
+.staff-header-badge {
+  background: rgba(255, 95, 31, 0.15);
+  border: 1px solid rgba(255, 95, 31, 0.4);
+  color: var(--accent);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.staff-header-badge:active {
+  background: rgba(255, 95, 31, 0.3);
+}
+
+/* Staff Modal Headers & Badges */
+.staff-modal-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.staff-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+/* Segmented Mode Tabs */
+.staff-tab-bar {
+  display: flex;
+  background: var(--bg-primary);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  gap: 4px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color);
+}
+.staff-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.staff-tab.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.staff-tab-content {
+  display: none;
+}
+.staff-tab-content.active {
+  display: block;
+}
+
+/* Target Item Selection Card & Preview */
+.target-part-card {
+  background: var(--bg-primary);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 16px;
+}
+.part-dropdown {
+  margin-top: 6px;
+}
+.selected-part-preview {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-color);
+}
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.preview-header h4 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.preview-sku {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+.preview-cat {
+  font-size: 0.75rem;
+  background: rgba(255,255,255,0.08);
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+.preview-stock-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+.current-stock-val {
+  color: var(--accent);
+  font-size: 1.1rem;
+}
+
+/* Action Type Selector Pills */
+.action-type-selector {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.type-pill {
+  flex: 1;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 10px 8px;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.type-pill.active {
+  background: var(--bg-card);
+  border-color: var(--accent);
+  color: var(--text-primary);
+  box-shadow: 0 0 10px rgba(255, 95, 31, 0.2);
+}
+
+/* Stock Calculation Summary Banner */
+.stock-calc-banner {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 16px 0;
+}
+.calc-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.calc-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+.calc-val {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+.calc-val.highlight {
+  color: var(--accent);
+}
+.calc-arrow {
+  color: var(--text-secondary);
+  font-size: 1.2rem;
+}
+.calc-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.calc-badge.positive {
+  background: rgba(0, 230, 118, 0.15);
+  color: var(--success);
+  border: 1px solid rgba(0, 230, 118, 0.3);
+}
+.calc-badge.negative {
+  background: rgba(255, 23, 68, 0.15);
+  color: var(--danger);
+  border: 1px solid rgba(255, 23, 68, 0.3);
+}
+.calc-badge.neutral {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+
+/* Quantity Adjust Wrapper & Presets */
+.qty-adjust-wrapper {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+.qty-control-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+.qty-big-input {
+  flex: 1;
+  height: 48px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  outline: none;
+}
+.qty-big-input:focus {
+  border-color: var(--accent);
+}
+
+.qty-presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+.preset-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 8px 4px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.preset-btn:active {
+  background: var(--accent);
+  color: white;
+}
+
+/* Margin Preview Tag */
+.margin-preview-tag {
+  background: var(--bg-primary);
+  border: 1px solid var(--success);
+  color: var(--success);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 8px;
+  text-align: center;
+}
