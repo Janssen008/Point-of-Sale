@@ -3517,7 +3517,7 @@ class ApexMotoPOS {
     const query = (event.target.value || '').toLowerCase().trim();
     if (!query) return;
 
-    let partToAdd = this.parts.find(p => p.sku.toLowerCase() === query);
+    let partToAdd = this.parts.find(p => p.sku.toLowerCase() === query || (p.alternate_barcode && p.alternate_barcode.toLowerCase() === query));
     
     // If no exact SKU match, check if there is an exact name match
     if (!partToAdd) {
@@ -3541,13 +3541,14 @@ class ApexMotoPOS {
 
       let filtered = this.parts.filter(p =>
         p.name.toLowerCase().includes(query) ||
-        p.sku.toLowerCase().includes(query)
+        p.sku.toLowerCase().includes(query) ||
+        (p.alternate_barcode && p.alternate_barcode.toLowerCase().includes(query))
       );
 
       let partToAdd = null;
-      const exactSkuMatch = filtered.find(p => p.sku.toLowerCase() === query);
-      if (exactSkuMatch) {
-        partToAdd = exactSkuMatch;
+      const exactMatch = filtered.find(p => p.sku.toLowerCase() === query || (p.alternate_barcode && p.alternate_barcode.toLowerCase() === query));
+      if (exactMatch) {
+        partToAdd = exactMatch;
       } else if (filtered.length === 1) {
         partToAdd = filtered[0];
       }
