@@ -103,6 +103,58 @@ class ApexMotoPOS {
     overlay.style.display = show ? 'flex' : 'none';
   }
 
+  // Custom Prompt Modal Helper
+  async customPrompt(message, defaultValue = "") {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('modal-custom-prompt');
+      if (!modal) {
+        resolve(prompt(message, defaultValue));
+        return;
+      }
+      
+      const msgEl = document.getElementById('custom-prompt-message');
+      const inputEl = document.getElementById('custom-prompt-input');
+      const okBtn = document.getElementById('btn-custom-prompt-ok');
+      const cancelBtn = document.getElementById('btn-custom-prompt-cancel');
+      
+      msgEl.innerHTML = message.replace(/\n/g, '<br>');
+      inputEl.value = defaultValue;
+      
+      const cleanup = () => {
+        okBtn.removeEventListener('click', handleOk);
+        cancelBtn.removeEventListener('click', handleCancel);
+        inputEl.removeEventListener('keydown', handleKey);
+        this.closeModal('modal-custom-prompt');
+      };
+
+      const handleOk = () => {
+        const val = inputEl.value;
+        cleanup();
+        resolve(val);
+      };
+      
+      const handleCancel = () => {
+        cleanup();
+        resolve(null);
+      };
+      
+      const handleKey = (e) => {
+        if (e.key === 'Enter') handleOk();
+        if (e.key === 'Escape') handleCancel();
+      };
+      
+      okBtn.addEventListener('click', handleOk);
+      cancelBtn.addEventListener('click', handleCancel);
+      inputEl.addEventListener('keydown', handleKey);
+      
+      this.openModal('modal-custom-prompt');
+      setTimeout(() => {
+        inputEl.focus();
+        inputEl.select();
+      }, 50);
+    });
+  }
+
   // Setup UI event bindings
   setupEventListeners() {
     // Sidebar view switches
@@ -1364,7 +1416,7 @@ class ApexMotoPOS {
     if (!doubleCheck) return;
 
     // Authentication check
-    const pin = prompt("Authentication Required: Please enter the Admin PIN to authorize data deletion:");
+    const pin = await this.customPrompt("Authentication Required: Please enter the Admin PIN to authorize data deletion:");
     if (pin !== '1234') {
       this.showToast("Incorrect PIN. Data deletion cancelled.", "danger");
       return;
@@ -2341,8 +2393,8 @@ class ApexMotoPOS {
     this.updateMassSummary();
   }
 
-  massSetQty() {
-    const val = prompt("Set quantity for all selected items:", "1");
+  async massSetQty() {
+    const val = await this.customPrompt("Set quantity for all selected items:", "1");
     if (val === null) return;
     const qty = Math.max(1, Math.min(100, parseInt(val) || 1));
 
@@ -2511,7 +2563,7 @@ class ApexMotoPOS {
     if (partIndex === -1) return;
     const part = this.parts[partIndex];
     
-    const input = prompt(`Add stock for: ${part.name}\nCurrent stock: ${part.stock}\n\nEnter quantity to add:`, "1");
+    const input = await this.customPrompt(`Add stock for: ${part.name}\nCurrent stock: ${part.stock}\n\nEnter quantity to add:`, "1");
     if (input === null) return; // User cancelled
     
     const qtyToAdd = parseInt(input, 10);
