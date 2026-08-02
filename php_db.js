@@ -172,8 +172,14 @@ const DB = {
     return res.data.id;
   },
 
-  async deleteAllSalesData() {
-    await apiRequest('deleteAllSalesData');
+  // ─── SETTINGS ────────────────────────────────────────────────────────
+  async getSettings() {
+    const res = await apiRequest('getSettings');
+    return res.data;
+  },
+
+  async updateSettings(settings) {
+    await apiRequest('updateSettings', { settings });
   },
 };
 

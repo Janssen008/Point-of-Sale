@@ -93,6 +93,7 @@
         <div class="user-profile">
           <div class="user-avatar" id="current-user-avatar">PM</div>
           <span style="font-size: 0.9rem; font-weight: 500;" id="current-user-name">Pew Miller</span>
+          <button id="btn-admin-settings" class="btn btn-secondary btn-sm" onclick="app.openSettingsModal()" style="margin-left: 10px; padding: 4px 8px; display: none;">Settings</button>
           <button class="btn btn-secondary btn-sm" onclick="app.logout()" style="margin-left: 10px; padding: 4px 8px;">Logout</button>
         </div>
       </div>
@@ -1266,6 +1267,53 @@
 
   <!-- Print Container -->
   <div id="print-receipt-container"></div>
+
+  <!-- Settings Modal (Admin Only) -->
+  <div class="modal-overlay" id="modal-settings">
+    <div class="modal-container" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 class="modal-title">System Settings</h3>
+        <button class="modal-close" onclick="app.closeModal('modal-settings')">×</button>
+      </div>
+      <div class="modal-body">
+        <h4 style="margin-bottom: 12px;">Cashier Role Permissions</h4>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px;">Select which modules the Cashier role is allowed to access.</p>
+        
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="cb-access-dashboard"> Dashboard Overview
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="cb-access-pos"> Point of Sale
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="cb-access-service"> Service Tracker
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="cb-access-sales-history"> Sales History
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="cb-access-inventory"> Parts Inventory
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="cb-access-customers"> Customers (Debt)
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="cb-access-mechanics"> Mechanics (Labor)
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="cb-access-reports"> Sales Reports
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="app.closeModal('modal-settings')">Cancel</button>
+        <button class="btn btn-primary" onclick="app.saveSettings()">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-holder" class="toast-container"></div>
 
   <!-- Batch Barcode Print Container (Hidden from Screen) -->
   <div id="print-all-barcodes-container"></div>

@@ -10,6 +10,7 @@ class ApexMotoPOS {
     this.transactions = [];
     this.cashOuts = [];
     this.entryCapitals = [];
+    this.settings = null;
     
     this.cart = [];
     this.selectedCustomer = null;
@@ -49,7 +50,7 @@ class ApexMotoPOS {
 
   // Load all data from Supabase
   async loadData() {
-    const [parts, customers, serviceJobs, transactions, mechanics, cashOuts, entryCapitals] = await Promise.all([
+    const [parts, customers, serviceJobs, transactions, mechanics, cashOuts, entryCapitals, settings] = await Promise.all([
       DB.getParts(),
       DB.getCustomers(),
       DB.getServiceJobs(),
@@ -57,6 +58,7 @@ class ApexMotoPOS {
       DB.getMechanics(),
       DB.getCashOuts(),
       DB.getEntryCapitals(),
+      DB.getSettings(),
     ]);
     this.parts = parts || [];
     this.customers = customers || [];
@@ -65,6 +67,7 @@ class ApexMotoPOS {
     this.mechanics = mechanics || [];
     this.cashOuts = cashOuts || [];
     this.entryCapitals = entryCapitals || [];
+    this.settings = settings || { cashierRestrictedViews: ['dashboard', 'mechanics', 'reports'] };
   }
 
   populateCartMechanicsDropdown() {
@@ -543,9 +546,16 @@ class ApexMotoPOS {
     const allItems = document.querySelectorAll('.sidebar-menu .menu-item');
     allItems.forEach(item => item.style.display = 'flex');
 
+    const btnSettings = document.getElementById('btn-admin-settings');
+    if (btnSettings) btnSettings.style.display = this.currentUser.role === 'admin' ? 'block' : 'none';
+
     if (this.currentUser.role === 'cashier') {
-      const restrictedItems = document.querySelectorAll('.sidebar-menu .menu-item[data-view="dashboard"], .sidebar-menu .menu-item[data-view="mechanics"], .sidebar-menu .menu-item[data-view="reports"]');
-      restrictedItems.forEach(item => item.style.display = 'none');
+      const restrictedViews = this.settings?.cashierRestrictedViews || ['dashboard', 'mechanics', 'reports'];
+      const selectors = restrictedViews.map(view => `.sidebar-menu .menu-item[data-view="${view}"]`).join(', ');
+      if (selectors) {
+         const restrictedItems = document.querySelectorAll(selectors);
+         restrictedItems.forEach(item => item.style.display = 'none');
+      }
       this.switchView('pos'); // Default for cashier
     } else if (this.currentUser.role === 'mechanic') {
       const restrictedItems = document.querySelectorAll('.sidebar-menu .menu-item:not([data-view="service"])');
@@ -581,7 +591,7 @@ class ApexMotoPOS {
       
       // RBAC Check
       if (this.currentUser && this.currentUser.role === 'cashier') {
-        const restrictedViews = ['dashboard', 'mechanics', 'reports'];
+        const restrictedViews = this.settings?.cashierRestrictedViews || ['dashboard', 'mechanics', 'reports'];
         if (restrictedViews.includes(viewId)) {
           this.showToast("Access Denied: Cashiers cannot access this module.", "danger");
           return;
@@ -2170,6 +2180,14 @@ class ApexMotoPOS {
 
   openModal(modalId) {
     document.getElementById(modalId).classList.add('active');
+    
+    // Automatically focus specific inputs after the 0.3s CSS transition
+    setTimeout(() => {
+      if (modalId === 'modal-checkout') {
+        const cashInput = document.getElementById('cash-received');
+        if (cashInput) cashInput.focus();
+      }
+    }, 350);
   }
 
   closeModal(modalId) {
@@ -4820,6 +4838,51 @@ class ApexMotoPOS {
     }
   }
 
+  openSettingsModal() {
+    if (this.currentUser?.role !== 'admin') {
+      this.showToast("Only admins can change settings.", "danger");
+      return;
+    }
+    const restricted = this.settings?.cashierRestrictedViews || ['dashboard', 'mechanics', 'reports'];
+    const modules = ['dashboard', 'pos', 'service', 'sales-history', 'inventory', 'customers', 'mechanics', 'reports'];
+    
+    modules.forEach(mod => {
+      const checkbox = document.getElementById(`cb-access-${mod}`);
+      if (checkbox) {
+        checkbox.checked = !restricted.includes(mod);
+      }
+    });
+
+    this.openModal('modal-settings');
+  }
+
+  async saveSettings() {
+    if (this.currentUser?.role !== 'admin') return;
+    
+    const modules = ['dashboard', 'pos', 'service', 'sales-history', 'inventory', 'customers', 'mechanics', 'reports'];
+    const restrictedViews = [];
+    
+    modules.forEach(mod => {
+      const checkbox = document.getElementById(`cb-access-${mod}`);
+      if (checkbox && !checkbox.checked) {
+        restrictedViews.push(mod);
+      }
+    });
+
+    this.settings = { ...this.settings, cashierRestrictedViews: restrictedViews };
+    
+    this.showLoadingOverlay(true);
+    try {
+      await DB.updateSettings(this.settings);
+      this.showToast("Settings saved successfully.", "success");
+      this.closeModal('modal-settings');
+    } catch (e) {
+      console.error(e);
+      this.showToast("Failed to save settings.", "danger");
+    } finally {
+      this.showLoadingOverlay(false);
+    }
+  }
 }
 
 

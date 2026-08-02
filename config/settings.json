@@ -1,0 +1,11 @@
+{
+    "cashierRestrictedViews": [
+        "dashboard",
+        "service",
+        "sales-history",
+        "inventory",
+        "customers",
+        "mechanics",
+        "reports"
+    ]
+}

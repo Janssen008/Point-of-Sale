@@ -595,6 +595,25 @@ try {
             echo json_encode(['success' => true]);
             break;
 
+        case 'getSettings':
+            $settingsPath = __DIR__ . '/../config/settings.json';
+            if (file_exists($settingsPath)) {
+                $settings = json_decode(file_get_contents($settingsPath), true);
+            } else {
+                $settings = [
+                    'cashierRestrictedViews' => ['dashboard', 'mechanics', 'reports']
+                ];
+            }
+            echo json_encode(['data' => $settings]);
+            break;
+
+        case 'updateSettings':
+            $settingsPath = __DIR__ . '/../config/settings.json';
+            $settings = $input['settings'] ?? [];
+            file_put_contents($settingsPath, json_encode($settings, JSON_PRETTY_PRINT));
+            echo json_encode(['success' => true]);
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['error' => true, 'message' => "Invalid or missing action: '{$action}'"]);
