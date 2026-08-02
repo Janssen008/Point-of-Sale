@@ -308,6 +308,22 @@ class ApexMotoPOS {
     const cashRec = document.getElementById('cash-received');
     if (cashRec) {
       cashRec.addEventListener('input', () => this.calculateCashChange());
+      cashRec.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.completeTransaction();
+        }
+      });
+    }
+
+    const gcashRef = document.getElementById('gcash-reference');
+    if (gcashRef) {
+      gcashRef.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.completeTransaction();
+        }
+      });
     }
 
     // Add Part Modal Form Submission
@@ -399,6 +415,15 @@ class ApexMotoPOS {
 
     // Global Keyboard Shortcuts (F-keys)
     window.addEventListener('keydown', (e) => {
+      const checkoutModal = document.getElementById('modal-checkout');
+      if (checkoutModal && checkoutModal.classList.contains('active')) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.completeTransaction();
+          return;
+        }
+      }
+
       const fKeys = ['F1', 'F2', 'F3', 'F4', 'F6', 'F9', 'F10', 'F12'];
       if (fKeys.includes(e.key)) {
         e.preventDefault();
@@ -425,7 +450,9 @@ class ApexMotoPOS {
             this.showToast("Switched to Customer CRM [F6]", "info");
             break;
           case 'F9':
-            if (this.activeView === 'pos') {
+            if (checkoutModal && checkoutModal.classList.contains('active')) {
+              this.completeTransaction();
+            } else if (this.activeView === 'pos') {
               this.openCheckoutModal();
             } else if (this.activeJobId) {
               this.invoiceAndPayWorkOrder();
@@ -1636,15 +1663,17 @@ class ApexMotoPOS {
       const card = document.createElement('div');
       card.className = 'cart-item';
       card.innerHTML = `
-        <button class="qty-btn" style="background: #5a6268; color: #fff; border: none;" onclick="app.updateCartQty('${part.id}', ${item.quantity + 1})" ${item.quantity >= part.stock ? 'disabled' : ''}>+</button>
-        <span class="qty-val">${item.quantity}</span>
-        <button class="qty-btn" style="background: #d9534f; color: #fff; border: none;" onclick="app.updateCartQty('${part.id}', ${item.quantity - 1})">-</button>
+        <div class="cart-qty-group">
+          <button class="qty-btn qty-minus" onclick="app.updateCartQty('${part.id}', ${item.quantity - 1})">-</button>
+          <span class="qty-val">${item.quantity}</span>
+          <button class="qty-btn qty-plus" onclick="app.updateCartQty('${part.id}', ${item.quantity + 1})" ${item.quantity >= part.stock ? 'disabled' : ''}>+</button>
+        </div>
         
         <div class="cart-item-name" title="${part.name}">${part.name}</div>
         
-        <div style="display: flex; flex-direction: column; align-items: flex-end; line-height: 1.15;">
-          <div class="cart-item-total">${itemTotal.toFixed(2)}</div>
-          <div class="cart-item-price">${part.price.toFixed(2)}</div>
+        <div class="cart-item-price-block">
+          <span class="cart-item-total">₱${itemTotal.toFixed(2)}</span>
+          ${item.quantity > 1 ? `<span class="cart-item-unit">₱${part.price.toFixed(2)} ea</span>` : ''}
         </div>
         
         <button class="cart-item-remove" onclick="app.removeFromCart('${part.id}')" title="Remove">×</button>
@@ -1653,6 +1682,11 @@ class ApexMotoPOS {
     });
 
     this.calculateCartTotals();
+
+    // Automatically scroll down to the bottom/newest item when reaching the layout edge
+    setTimeout(() => {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    }, 50);
   }
 
   calculateCartTotals() {
@@ -3353,6 +3387,15 @@ class ApexMotoPOS {
 
     this.openModal('modal-checkout');
     this.broadcastToCustomerDisplay('checkout', { paymentMethod: 'Cash' });
+
+    // Focus Cash Received input automatically for cashier convenience
+    setTimeout(() => {
+      const cashInput = document.getElementById('cash-received');
+      if (cashInput) {
+        cashInput.focus();
+        cashInput.select();
+      }
+    }, 100);
   }
 
   toggleCashCalculator(method) {

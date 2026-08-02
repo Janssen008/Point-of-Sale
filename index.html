@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Diego's Motorcycle Parts & Accessories - POS</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body class="login-mode">
 
@@ -357,6 +357,7 @@
               <div class="scanner-input-wrapper">
                 <svg class="scanner-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M4,6H6V18H4V6M7,6H8V18H7V6M9,6H12V18H9V6M13,6H14V18H13V6M16,6H18V18H16V6M19,6H20V18H19V6M2,4V8H0V4A2,2 0 0,1 2,2H6V4H2M22,2A2,2 0 0,1 24,4V8H22V4H18V2H22M2,16V20H6V22H2A2,2 0 0,1 0,20V16H2M22,20V16H24V20A2,2 0 0,1 22,22H18V20H22Z"/></svg>
                 <input type="text" class="input-control" id="pos-search-input" placeholder="Scan barcode or search by name, SKU, brand...">
+                <kbd class="hotkey-badge search-hotkey" title="Keyboard Shortcut: Press F2 or Alt+S">F2</kbd>
               </div>
               <button class="btn btn-secondary" id="pos-search-clear">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
@@ -367,6 +368,7 @@
             <div class="pos-toolbar">
               <div class="pos-toolbar-left">
                 <button class="btn btn-secondary btn-sm" id="btn-hold-order">
+                  <kbd class="hotkey-badge">F8</kbd>
                   <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M19,21H5V9H19M12,2A3,3 0 0,0 9,5V7H5A2,2 0 0,0 3,9V21A2,2 0 0,0 5,23H19A2,2 0 0,0 21,21V9A2,2 0 0,0 19,7H15V5A3,3 0 0,0 12,2M12,4A1,1 0 0,1 13,5V7H11V5A1,1 0 0,1 12,4Z"/></svg>
                   Hold
                 </button>
@@ -414,7 +416,10 @@
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="opacity: 0.5;"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>
                   <span>Walk-in Transaction</span>
                 </div>
-                <button class="btn btn-secondary btn-sm" onclick="app.openSelectCustomerModal()">Attach</button>
+                <button class="btn btn-secondary btn-sm" onclick="app.openSelectCustomerModal()">
+                  <kbd class="hotkey-badge">F6</kbd>
+                  Attach
+                </button>
               </div>
               <div id="cart-has-customer" style="display: none; margin-bottom: 8px;" class="selected-customer-info">
                 <div style="flex-grow: 1;">
@@ -445,30 +450,28 @@
 
             <!-- Cart pricing summary & Actions -->
             <div class="cart-summary">
-              <div class="summary-row">
-                <span>Parts Subtotal</span>
-                <span id="cart-subtotal-parts">₱0.00</span>
+              <!-- Compact horizontal pricing sub-bar -->
+              <div class="cart-summary-compact-bar">
+                <span>Sub: <strong id="cart-subtotal" style="color: var(--text-primary);">₱0.00</strong></span>
+                <span id="cart-subtotal-parts" style="display: none;">₱0.00</span>
+                <span id="cart-labor-row" style="display: none; color: var(--warning);">Labor: <strong id="cart-labor-total">₱0.00</strong></span>
+                <span style="display: inline-flex; align-items: center; gap: 4px;">
+                  Disc: <input type="number" class="input-control" id="cart-discount-input" value="0.00" step="1" min="0" oninput="app.calculateCartTotals()">
+                </span>
               </div>
-              <div class="summary-row" id="cart-labor-row" style="display: none; color: var(--warning);">
-                <span>Labor Total</span>
-                <span id="cart-labor-total">₱0.00</span>
-              </div>
-              <div class="summary-row" style="border-top: 1px dashed var(--border-color); padding-top: 8px;">
-                <span style="font-weight: 600;">Gross Total</span>
-                <span id="cart-subtotal" style="font-weight: 600;">₱0.00</span>
-              </div>
-              <div class="summary-row" style="align-items: center;">
-                <span>Discount (₱)</span>
-                <input type="number" class="input-control" id="cart-discount-input" value="0.00" step="1" min="0" style="width: 80px; padding: 4px 8px; text-align: right; font-size: 0.85rem;">
-              </div>
+
               <div class="summary-row total-row">
                 <span>Grand Total</span>
                 <span id="cart-total">₱0.00</span>
               </div>
               
               <div class="cart-actions">
-                <button class="btn btn-secondary" onclick="app.clearCart()">Clear Order</button>
-                <button class="btn btn-primary" onclick="app.openCheckoutModal()">Pay & Invoice</button>
+                <button class="btn btn-secondary btn-clear-order" onclick="app.clearCart()">
+                  <kbd class="hotkey-badge">F10</kbd> Clear Order
+                </button>
+                <button class="btn btn-primary btn-pay-invoice" onclick="app.openCheckoutModal()">
+                  <kbd class="hotkey-badge primary-hotkey">F9</kbd> Pay & Invoice
+                </button>
               </div>
             </div>
           </div>
@@ -1177,7 +1180,9 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="app.closeModal('modal-checkout')">Cancel</button>
-        <button class="btn btn-success" onclick="app.completeTransaction()">Authorize &amp; Print</button>
+        <button class="btn btn-success" onclick="app.completeTransaction()">
+          <kbd class="hotkey-badge primary-hotkey" style="background: rgba(255,255,255,0.3); border-color: rgba(255,255,255,0.5);">Enter ↵</kbd> Authorize &amp; Print
+        </button>
       </div>
     </div>
   </div>
@@ -1518,7 +1523,7 @@
 
   <!-- JavaScript Scripts -->
   <script src="mockData.js"></script>
-  <script src="php_db.js?v=2"></script>
-  <script src="app.js?v=2"></script>
+  <script src="php_db.js?v=4"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>
