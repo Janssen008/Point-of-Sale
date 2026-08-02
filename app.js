@@ -4812,6 +4812,13 @@ class ApexMotoPOS {
       return;
     }
 
+    // Authentication check
+    const pin = await this.customPrompt("Security Check: Please enter the Admin PIN to authorize data deletion:");
+    if (pin !== '1234') {
+      this.showToast("Incorrect PIN. Data deletion cancelled.", "danger");
+      return;
+    }
+
     this.showLoadingOverlay(true);
     try {
       await DB.deleteAllSalesData();
