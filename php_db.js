@@ -120,7 +120,11 @@ const DB = {
   },
 
   async createTransaction(tx) {
-    await apiRequest('createTransaction', { tx });
+    const res = await apiRequest('createTransaction', { tx });
+    if (res && res.id) {
+      tx.id = res.id;
+    }
+    return res;
   },
 
   async updateTransactionPaymentMethod(transactionId, newMethod) {

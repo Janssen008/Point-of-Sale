@@ -1485,7 +1485,9 @@ class ApexMotoPOS {
   renderPOSCatalog() {
     const categoryContainer = document.getElementById('pos-category-tabs');
     const catalogGrid = document.getElementById('pos-catalog-grid');
-    const searchVal = document.getElementById('pos-search-input').value.toLowerCase().trim();
+    const searchInput = document.getElementById('pos-search-input');
+    if (!categoryContainer || !catalogGrid) return;
+    const searchVal = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
     // 1. Populate Category Tabs (Only if category tabs is empty)
     const categories = ['All', ...new Set(this.parts.map(p => p.category))];
@@ -3988,7 +3990,7 @@ class ApexMotoPOS {
     const discount = parseFloat(discountInput ? discountInput.value : 0) || 0;
 
     let transactionRecord = null;
-    const txId = 'TX-' + (this.transactions.length + 10001);
+    const txId = 'TX-' + Date.now() + '-' + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
     const stockUpdates = [];
 
     if (this.activeJobId && this.activeView === 'service') {
@@ -4422,8 +4424,8 @@ class ApexMotoPOS {
   renderItemSearchResults() {
     const query = (document.getElementById('item-search-input').value || '').toLowerCase().trim();
     const category = document.getElementById('item-search-category').value;
-    const grid = document.getElementById('item-search-results');
-    grid.innerHTML = '';
+    const tbody = document.getElementById('item-search-results');
+    tbody.innerHTML = '';
 
     let filtered = this.parts;
     if (category !== 'All') filtered = filtered.filter(p => p.category === category);
@@ -4436,7 +4438,7 @@ class ApexMotoPOS {
     }
 
     if (filtered.length === 0) {
-      grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary);">No items found. Try a different SKU or category.</div>`;
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-secondary);">No items found. Try a different SKU or category.</td></tr>`;
       return;
     }
 
@@ -4445,38 +4447,47 @@ class ApexMotoPOS {
       const isLow = p.stock > 0 && p.stock <= p.minStock;
       const inCart = this.cart.find(c => c.partId === p.id);
 
-      let stockBadge = `<span style="font-size:0.7rem;padding:2px 6px;border-radius:20px;background:rgba(46,204,113,0.15);color:var(--success);font-weight:600;">${p.stock} Avail</span>`;
-      if (isOut) stockBadge = `<span style="font-size:0.7rem;padding:2px 6px;border-radius:20px;background:rgba(231,76,60,0.15);color:var(--danger);font-weight:600;">Out of Stock</span>`;
-      else if (isLow) stockBadge = `<span style="font-size:0.7rem;padding:2px 6px;border-radius:20px;background:rgba(241,196,15,0.15);color:#f1c40f;font-weight:600;">Low: ${p.stock}</span>`;
+      let stockBadge = `<span class="badge badge-success">${p.stock} Avail</span>`;
+      if (isOut) stockBadge = `<span class="badge badge-danger">Out of Stock</span>`;
+      else if (isLow) stockBadge = `<span class="badge badge-warning">Low: ${p.stock}</span>`;
 
-      const card = document.createElement('div');
-      card.style.cssText = `
-        background: var(--bg-surface); border: 1px solid ${isOut ? 'rgba(231,76,60,0.3)' : inCart ? 'var(--accent)' : 'var(--border-color)'};
-        border-radius: 10px; padding: 12px; cursor: ${isOut ? 'not-allowed' : 'pointer'};
-        opacity: ${isOut ? '0.55' : '1'}; transition: all 0.2s;
-        display: flex; flex-direction: column; gap: 6px;
-      `;
-      card.innerHTML = `
-        <div style="font-size:0.7rem;color:var(--text-secondary);font-family:monospace;letter-spacing:0.5px;">${p.sku}</div>
-        <div style="font-size:0.85rem;font-weight:600;line-height:1.3;flex-grow:1;">${p.name}</div>
-        <div style="font-size:0.7rem;color:var(--text-secondary);">Category: <span style="color:var(--accent);">${p.category}</span></div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
-          <div style="font-size:1rem;font-weight:700;color:var(--accent);">₱${p.price.toFixed(2)}</div>
-          ${stockBadge}
-        </div>
-        ${inCart ? `<div style="font-size:0.72rem;text-align:center;padding:4px;background:rgba(var(--accent-rgb,255,95,31),0.1);border-radius:6px;color:var(--accent);">✓ In cart (qty: ${inCart.quantity})</div>` : ''}
+      const tr = document.createElement('tr');
+      tr.style.cssText = `border-bottom: 1px solid var(--border-color); opacity: ${isOut ? '0.5' : '1'}; transition: background 0.15s;`;
+      tr.className = 'search-item-row';
+      
+      tr.innerHTML = `
+        <td style="padding: 10px 14px; font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">${p.sku}</td>
+        <td style="padding: 10px 14px; font-weight: 600; font-size: 0.85rem; color: var(--text-primary);">${p.name}</td>
+        <td style="padding: 10px 14px; font-size: 0.8rem; color: var(--accent);">${p.category}</td>
+        <td style="padding: 10px 14px; font-weight: 700; font-size: 0.9rem; color: var(--accent); text-align: right;">₱${p.price.toFixed(2)}</td>
+        <td style="padding: 10px 14px; text-align: center;">${stockBadge}</td>
+        <td style="padding: 10px 14px; text-align: center;">
+          ${isOut 
+            ? `<span style="font-size:0.75rem; color:var(--text-muted);">Unavailable</span>` 
+            : `<button class="btn ${inCart ? 'btn-secondary' : 'btn-primary'} btn-sm" style="padding: 4px 10px; font-size: 0.78rem;">
+                ${inCart ? `+ Add More (${inCart.quantity})` : '+ Add Item'}
+               </button>`
+          }
+        </td>
       `;
 
       if (!isOut) {
-        card.addEventListener('click', () => {
+        const btn = tr.querySelector('button');
+        if (btn) {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.addToCart(p.id);
+            this.renderItemSearchResults();
+          });
+        }
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', () => {
           this.addToCart(p.id);
-          this.renderItemSearchResults(); // Refresh to show updated in-cart count
+          this.renderItemSearchResults();
         });
-        card.addEventListener('mouseenter', () => { if (!isOut) card.style.borderColor = 'var(--accent)'; card.style.transform = 'translateY(-2px)'; });
-        card.addEventListener('mouseleave', () => { card.style.borderColor = inCart ? 'var(--accent)' : 'var(--border-color)'; card.style.transform = ''; });
       }
 
-      grid.appendChild(card);
+      tbody.appendChild(tr);
     });
   }
 

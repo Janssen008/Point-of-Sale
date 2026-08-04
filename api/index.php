@@ -390,6 +390,27 @@ try {
 
         case 'createTransaction':
             $tx = $input['tx'] ?? [];
+            $txId = $tx['id'] ?? null;
+
+            if (empty($txId)) {
+                $txId = 'TX-' . round(microtime(true) * 1000) . '-' . mt_rand(100, 999);
+            }
+
+            // Check if transaction ID already exists in DB to prevent 1062 duplicate key errors
+            $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM transactions WHERE id = ?");
+            $checkStmt->execute([$txId]);
+            if ($checkStmt->fetchColumn() > 0) {
+                // Generate a guaranteed unique timestamp-based ID
+                while (true) {
+                    $txId = 'TX-' . round(microtime(true) * 1000) . '-' . mt_rand(100, 999);
+                    $checkStmt->execute([$txId]);
+                    if ($checkStmt->fetchColumn() == 0) {
+                        break;
+                    }
+                    usleep(1000); // Wait 1ms
+                }
+            }
+
             $pdo->beginTransaction();
 
             $stmt = $pdo->prepare("
@@ -397,7 +418,7 @@ try {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
-                $tx['id'],
+                $txId,
                 $tx['type'] ?? 'Retail',
                 !empty($tx['customerId']) ? $tx['customerId'] : null,
                 $tx['customerName'] ?? 'Walk-in Customer',
@@ -419,7 +440,7 @@ try {
                     $partId = ($item['id'] !== 'labor') ? $item['id'] : null;
                     $iStmt->execute([
                         generate_uuid(),
-                        $tx['id'],
+                        $txId,
                         $partId,
                         $item['name'],
                         (int)$item['quantity'],
@@ -429,7 +450,7 @@ try {
             }
 
             $pdo->commit();
-            echo json_encode(['success' => true]);
+            echo json_encode(['success' => true, 'id' => $txId]);
             break;
 
         case 'updateTransactionPaymentMethod':

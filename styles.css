@@ -543,7 +543,11 @@ tr:last-child td {
 }
 
 tr:hover td {
-  background-color: rgba(255, 255, 255, 0.01);
+  background-color: rgba(255, 95, 31, 0.05);
+}
+
+.search-item-row:hover td {
+  background-color: rgba(255, 95, 31, 0.08);
 }
 
 /* Badges */
@@ -1783,6 +1787,7 @@ tr:hover td {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .pos-toolbar .btn-sm {
@@ -1791,13 +1796,147 @@ tr:hover td {
   gap: 5px;
 }
 
-/* Category Tabs — Supermarket Style */
-.catalog-tabs {
+/* Barcode Scanner Station Hero View */
+.scanner-hero-container {
   display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 10px;
+  height: 100%;
+}
+
+.scanner-status-card {
+  background: linear-gradient(135deg, rgba(21, 26, 38, 0.95), rgba(10, 12, 16, 0.98));
+  border: 1.5px solid rgba(255, 95, 31, 0.25);
+  border-radius: var(--radius-lg);
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.scanner-status-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+
+.scanner-pulse-ring {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(255, 95, 31, 0.08);
+  border: 2px solid rgba(255, 95, 31, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  box-shadow: 0 0 25px rgba(255, 95, 31, 0.2);
+  animation: pulseGlow 2.5s infinite ease-in-out;
+}
+
+@keyframes pulseGlow {
+  0% { transform: scale(0.96); box-shadow: 0 0 15px rgba(255, 95, 31, 0.15); }
+  50% { transform: scale(1.04); box-shadow: 0 0 35px rgba(255, 95, 31, 0.4); }
+  100% { transform: scale(0.96); box-shadow: 0 0 15px rgba(255, 95, 31, 0.15); }
+}
+
+.scanner-status-text .status-badge {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--accent);
+  background: rgba(255, 95, 31, 0.1);
+  padding: 4px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 95, 31, 0.2);
+  margin-bottom: 8px;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--success);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--success);
+  animation: blink 1.2s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.scanner-status-text h2 {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.scanner-status-text p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  max-width: 360px;
+  line-height: 1.4;
+}
+
+/* Shortcut Cards Grid */
+.shortcut-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.shortcut-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.shortcut-card:hover {
+  border-color: var(--accent);
+  background-color: var(--bg-tertiary);
+  transform: translateY(-2px);
+}
+
+.shortcut-key {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--accent);
+  background: rgba(255, 95, 31, 0.12);
+  padding: 4px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 95, 31, 0.25);
+}
+
+.shortcut-desc {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
 }
 
 .catalog-tab {
