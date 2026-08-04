@@ -612,6 +612,7 @@ try {
             $pdo->exec("DELETE FROM transactions;");
             $pdo->exec("DELETE FROM cash_outs;");
             $pdo->exec("DELETE FROM entry_capitals;");
+            $pdo->exec("DELETE FROM labor_records;");
             $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
             echo json_encode(['success' => true]);
             break;

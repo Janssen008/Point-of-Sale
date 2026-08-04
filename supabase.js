@@ -547,6 +547,10 @@ const DB = {
     // 3. Delete Entry Capitals
     const { error: err3 } = await _supabase.from('entry_capitals').delete().neq('id', dummyId);
     if (err3) throw err3;
+
+    // 4. Delete Labor Records
+    const { error: err4 } = await _supabase.from('labor_records').delete().neq('id', dummyId);
+    if (err4) throw err4;
     
     console.log('[DB] All sales data cleared.');
   },

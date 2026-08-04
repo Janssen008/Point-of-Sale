@@ -424,7 +424,7 @@ class ApexMotoPOS {
         }
       }
 
-      const fKeys = ['F1', 'F2', 'F3', 'F4', 'F6', 'F9', 'F10', 'F12'];
+      const fKeys = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F9', 'F10', 'F12'];
       if (fKeys.includes(e.key)) {
         e.preventDefault();
         
@@ -444,6 +444,10 @@ class ApexMotoPOS {
           case 'F4':
             this.switchView('inventory');
             this.showToast("Switched to Inventory Database [F4]", "info");
+            break;
+          case 'F5':
+            this.openItemSearchModal();
+            this.showToast("Opened Item Search Catalog [F5]", "info");
             break;
           case 'F6':
             this.switchView('customers');
@@ -551,22 +555,122 @@ class ApexMotoPOS {
   }
 
   // --- AUTHENTICATION MODULE ---
-  handleLogin() {
-    const pin = document.getElementById('login-pin-input').value.trim();
-    if (pin === '1234') {
-      this.currentUser = { name: 'Admin (Owner)', role: 'admin', initial: 'AD' };
-    } else if (pin === '1111') {
-      this.currentUser = { name: 'Cashier', role: 'cashier', initial: 'CS' };
-    } else if (pin === '2222') {
-      this.currentUser = { name: 'Mechanic', role: 'mechanic', initial: 'MC' };
+  getRegisteredUsers() {
+    try {
+      const stored = localStorage.getItem('pos_users');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {
+      console.error('Error loading users:', e);
+    }
+    // Default system accounts
+    return [
+      { username: 'admin', password: 'password', name: 'Admin (Owner)', role: 'admin', initial: 'AD' },
+      { username: 'cashier', password: 'password', name: 'Cashier', role: 'cashier', initial: 'CS' },
+      { username: 'mechanic', password: 'password', name: 'Mechanic', role: 'mechanic', initial: 'MC' }
+    ];
+  }
+
+  saveRegisteredUsers(users) {
+    localStorage.setItem('pos_users', JSON.stringify(users));
+  }
+
+  toggleAuthCard(card) {
+    const loginCard = document.getElementById('auth-login-card');
+    const regCard = document.getElementById('auth-register-card');
+    if (card === 'register') {
+      if (loginCard) loginCard.style.display = 'none';
+      if (regCard) regCard.style.display = 'block';
+      setTimeout(() => {
+        const nameInput = document.getElementById('reg-name-input');
+        if (nameInput) nameInput.focus();
+      }, 50);
     } else {
-      this.showToast("Invalid PIN. Please try again.", "danger");
-      document.getElementById('login-pin-input').value = '';
+      if (regCard) regCard.style.display = 'none';
+      if (loginCard) loginCard.style.display = 'block';
+      setTimeout(() => {
+        const userInput = document.getElementById('login-username-input');
+        if (userInput) userInput.focus();
+      }, 50);
+    }
+  }
+
+  handleRegister() {
+    const name = document.getElementById('reg-name-input').value.trim();
+    const username = document.getElementById('reg-username-input').value.trim().toLowerCase();
+    const role = document.getElementById('reg-role-input').value;
+    const password = document.getElementById('reg-password-input').value;
+    const confirmPassword = document.getElementById('reg-confirm-password-input').value;
+
+    if (!name || !username || !password) {
+      this.showToast("Please fill in all required fields", "warning");
       return;
     }
 
+    if (password !== confirmPassword) {
+      this.showToast("Passwords do not match. Please re-enter.", "danger");
+      return;
+    }
+
+    const users = this.getRegisteredUsers();
+    if (users.some(u => u.username === username)) {
+      this.showToast(`Username '${username}' is already taken.`, "danger");
+      return;
+    }
+
+    // Compute initials from name
+    const initialsArr = name.split(' ').filter(n => n).map(n => n[0].toUpperCase());
+    const initial = initialsArr.length > 1 ? (initialsArr[0] + initialsArr[initialsArr.length - 1]) : (initialsArr[0] || 'US');
+
+    const newUser = {
+      username,
+      password,
+      name,
+      role,
+      initial
+    };
+
+    users.push(newUser);
+    this.saveRegisteredUsers(users);
+
+    this.showToast("Account registered successfully! You can now log in.", "success");
+
+    // Clear form & switch to login card
+    document.getElementById('reg-name-input').value = '';
+    document.getElementById('reg-username-input').value = '';
+    document.getElementById('reg-password-input').value = '';
+    document.getElementById('reg-confirm-password-input').value = '';
+    
+    // Auto populate login username
+    const loginUserEl = document.getElementById('login-username-input');
+    if (loginUserEl) loginUserEl.value = username;
+
+    this.toggleAuthCard('login');
+  }
+
+  handleLogin() {
+    const usernameEl = document.getElementById('login-username-input');
+    const passwordEl = document.getElementById('login-password-input');
+
+    const usernameInput = usernameEl ? usernameEl.value.trim().toLowerCase() : '';
+    const passwordInput = passwordEl ? passwordEl.value : '';
+
+    if (!usernameInput || !passwordInput) {
+      this.showToast("Please enter both username and password.", "warning");
+      return;
+    }
+
+    const users = this.getRegisteredUsers();
+    const foundUser = users.find(u => u.username === usernameInput && u.password === passwordInput);
+
+    if (!foundUser) {
+      this.showToast("Invalid username or password.", "danger");
+      return;
+    }
+
+    this.currentUser = foundUser;
+
     // Update Header Profile
-    document.getElementById('current-user-avatar').textContent = this.currentUser.initial;
+    document.getElementById('current-user-avatar').textContent = this.currentUser.initial || 'US';
     document.getElementById('current-user-name').textContent = this.currentUser.name;
 
     // Apply RBAC UI Restrictions
@@ -576,6 +680,8 @@ class ApexMotoPOS {
     const btnSettings = document.getElementById('btn-admin-settings');
     if (btnSettings) btnSettings.style.display = this.currentUser.role === 'admin' ? 'block' : 'none';
 
+    // Determine target view based on role
+    let targetView = 'dashboard';
     if (this.currentUser.role === 'cashier') {
       const restrictedViews = this.settings?.cashierRestrictedViews || ['dashboard', 'mechanics', 'reports'];
       const selectors = restrictedViews.map(view => `.sidebar-menu .menu-item[data-view="${view}"]`).join(', ');
@@ -583,14 +689,19 @@ class ApexMotoPOS {
          const restrictedItems = document.querySelectorAll(selectors);
          restrictedItems.forEach(item => item.style.display = 'none');
       }
-      this.switchView('pos'); // Default for cashier
+      targetView = 'pos';
     } else if (this.currentUser.role === 'mechanic') {
       const restrictedItems = document.querySelectorAll('.sidebar-menu .menu-item:not([data-view="service"])');
       restrictedItems.forEach(item => item.style.display = 'none');
-      this.switchView('service'); // Default for mechanic
-    } else {
-      this.switchView('dashboard'); // Default for admin
+      targetView = 'service';
     }
+
+    // Switch view away from login
+    this.switchView(targetView);
+
+    // Clear password input for security
+    const pwdEl = document.getElementById('login-password-input');
+    if (pwdEl) pwdEl.value = '';
 
     this.showToast(`Logged in as ${this.currentUser.name}`, "success");
   }
@@ -606,11 +717,11 @@ class ApexMotoPOS {
     if (viewId === 'login') {
       document.body.classList.add('login-mode');
       this.activeView = 'login';
+      this.toggleAuthCard('login');
       setTimeout(() => {
-        const pinInput = document.getElementById('login-pin-input');
-        if (pinInput) {
-          pinInput.value = '';
-          pinInput.focus();
+        const userInput = document.getElementById('login-username-input');
+        if (userInput) {
+          userInput.focus();
         }
       }, 50);
     } else {
@@ -744,6 +855,15 @@ class ApexMotoPOS {
       });
     });
 
+    // --- Standalone Mechanic Labor Records ---
+    (this.mechanics || []).forEach(m => {
+      (m.laborRecords || []).forEach(rec => {
+        if (rec.date && new Date(rec.date).toDateString() === today) {
+          laborIncome += (parseFloat(rec.amount) || 0);
+        }
+      });
+    });
+
     const totalIncome = salesIncome + laborIncome;
     const activeJobs = this.serviceJobs.filter(job => job.status !== 'Completed').length;
     const lowStock = this.parts.filter(p => p.stock <= p.minStock).length;
@@ -756,11 +876,13 @@ class ApexMotoPOS {
 
     // Cash Out totals for today
     const todayCashOuts = this.cashOuts.filter(co => new Date(co.date).toDateString() === today);
-    const totalCashOut = todayCashOuts.reduce((sum, co) => sum + co.amount, 0);
     const laborPayoutsToday = todayCashOuts.filter(co => co.reason === 'Mechanic Labor Payout').reduce((sum, co) => sum + co.amount, 0);
-    const netIncome = totalIncome - totalCashOut;
+    const nonLaborCashOuts = todayCashOuts.filter(co => co.reason !== 'Mechanic Labor Payout');
+    const nonLaborTotalCashOut = nonLaborCashOuts.reduce((sum, co) => sum + co.amount, 0);
+    const totalCashOut = todayCashOuts.reduce((sum, co) => sum + co.amount, 0);
 
     const netLaborIncome = laborIncome - laborPayoutsToday;
+    const netIncome = salesIncome + netLaborIncome - nonLaborTotalCashOut;
 
     document.getElementById('dash-today-labor').textContent = `₱${netLaborIncome.toFixed(2)}`;
     document.getElementById('dash-labor-breakdown').textContent =
@@ -799,19 +921,13 @@ class ApexMotoPOS {
     // Render cash out breakdown
     this.renderCashOutBreakdown(todayCashOuts);
 
-    // Render Entry Capital
+    // Render Entry Capital stat card
     const todayEntryCapitals = this.entryCapitals.filter(ec => new Date(ec.date).toDateString() === today);
     const totalEntryCapital = todayEntryCapitals.reduce((sum, ec) => sum + ec.amount, 0);
-    const ecDisplay = document.getElementById('dash-entry-capital-display');
-    const ecValue = document.getElementById('dash-entry-capital-value');
-    if (ecDisplay && ecValue) {
-      if (todayEntryCapitals.length > 0) {
-        ecDisplay.style.display = 'block';
-        ecValue.textContent = totalEntryCapital.toFixed(2);
-      } else {
-        ecDisplay.style.display = 'none';
-      }
-    }
+    const capitalValEl = document.getElementById('dash-today-capital');
+    const capitalInfoEl = document.getElementById('dash-capital-info');
+    if (capitalValEl) capitalValEl.textContent = `₱${totalEntryCapital.toFixed(2)}`;
+    if (capitalInfoEl) capitalInfoEl.textContent = `${todayEntryCapitals.length} enter/replenish entry${todayEntryCapitals.length !== 1 ? 's' : ''} today`;
 
 
     // 2. Weekly chart rendering (CSS flex bars)
@@ -926,11 +1042,22 @@ class ApexMotoPOS {
       dateLabels.push(label);
     }
 
-    // Sum transaction totals per day
+    // Sum transaction totals + standalone labor records per day
     const salesData = days.map(dayStr => {
-      return this.transactions
+      const txSum = this.transactions
         .filter(tx => new Date(tx.date).toDateString() === dayStr)
         .reduce((sum, tx) => sum + tx.total, 0);
+
+      let laborSum = 0;
+      (this.mechanics || []).forEach(m => {
+        (m.laborRecords || []).forEach(rec => {
+          if (rec.date && new Date(rec.date).toDateString() === dayStr) {
+            laborSum += (parseFloat(rec.amount) || 0);
+          }
+        });
+      });
+
+      return txSum + laborSum;
     });
 
     const maxVal = Math.max(...salesData, 100); // Minimum scale limit of 100
@@ -1327,12 +1454,40 @@ class ApexMotoPOS {
     const totalCashOut = periodCashOuts.reduce((sum, c) => sum + c.amount, 0);
     const periodLaborPayouts = periodCashOuts.filter(c => c.reason === 'Mechanic Labor Payout').reduce((sum, c) => sum + c.amount, 0);
 
+    // Filter Entry Capitals
+    const periodCapitals = (this.entryCapitals || []).filter(c => {
+      const d = new Date(c.date);
+      return d >= start && d <= end;
+    });
+    const totalEntryCapital = periodCapitals.reduce((sum, c) => sum + c.amount, 0);
+
+    const capTbody = document.getElementById('report-capital-table');
+    if (capTbody) {
+      capTbody.innerHTML = '';
+      if (periodCapitals.length === 0) {
+        capTbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">No entry capital recorded for this period.</td></tr>';
+      } else {
+        periodCapitals.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(c => {
+          const dt = new Date(c.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${dt}</td>
+            <td>${c.note || c.reason || 'Initial Floating Fund'}</td>
+            <td>${c.user || 'Admin'}</td>
+            <td style="font-weight: 700; color: #3498db;">₱${c.amount.toFixed(2)}</td>
+          `;
+          capTbody.appendChild(tr);
+        });
+      }
+    }
+
     const netTotal = (grossSales + totalLabor) - totalCashOut;
     const netLabor = totalLabor - periodLaborPayouts;
 
     // Update DOM
     if (document.getElementById('report-gross-sales')) document.getElementById('report-gross-sales').textContent = `₱${grossSales.toFixed(2)}`;
     if (document.getElementById('report-total-labor')) document.getElementById('report-total-labor').textContent = `₱${netLabor.toFixed(2)}`;
+    if (document.getElementById('report-entry-capital')) document.getElementById('report-entry-capital').textContent = `₱${totalEntryCapital.toFixed(2)}`;
     if (document.getElementById('report-total-cashouts')) document.getElementById('report-total-cashouts').textContent = `₱${totalCashOut.toFixed(2)}`;
     if (document.getElementById('report-net-total')) document.getElementById('report-net-total').textContent = `₱${netTotal.toFixed(2)}`;
   }
@@ -1424,6 +1579,7 @@ class ApexMotoPOS {
     }
 
     let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "=== TRANSACTIONS ===\n";
     csvContent += "Date,Transaction ID,Type,Customer,Payment Method,Total Amount\n";
 
     periodTx.forEach(t => {
@@ -1434,6 +1590,24 @@ class ApexMotoPOS {
       const total = t.total.toFixed(2);
       csvContent += `${dateStr},${t.id},${type},${cust},${method},${total}\n`;
     });
+
+    // Add Entry Capital Section to CSV
+    const periodCapitals = (this.entryCapitals || []).filter(c => {
+      const d = new Date(c.date);
+      return d >= start && d <= end;
+    });
+
+    if (periodCapitals.length > 0) {
+      csvContent += "\n=== ENTRY CAPITAL & FLOATING FUNDS ===\n";
+      csvContent += "Date,Note/Description,Recorded By,Amount\n";
+      periodCapitals.forEach(c => {
+        const dateStr = new Date(c.date).toLocaleString().replace(/,/g, '');
+        const note = (c.note || c.reason || 'Initial Floating Fund').replace(/,/g, '');
+        const user = (c.user || 'Admin').replace(/,/g, '');
+        const amt = c.amount.toFixed(2);
+        csvContent += `${dateStr},${note},${user},${amt}\n`;
+      });
+    }
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -1527,17 +1701,14 @@ class ApexMotoPOS {
       }
     }
 
+    // Always render Quick Favorites Grid in main POS view
+    this.renderPOSQuickFavorites();
+
     // 3. Render Parts Grid
     catalogGrid.innerHTML = '';
     if (filteredParts.length === 0) {
       if (currentActiveTab === 'All' && !searchVal) {
-        catalogGrid.innerHTML = `
-          <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--text-muted);">
-            <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor" style="opacity: 0.2; margin-bottom: 12px;"><path d="M4,6H6V18H4V6M7,6H8V18H7V6M9,6H12V18H9V6M13,6H14V18H13V6M16,6H18V18H16V6M19,6H20V18H19V6M2,4V8H0V4A2,2 0 0,1 2,2H6V4H2M22,2A2,2 0 0,1 24,4V8H22V4H18V2H22M2,16V20H6V22H2A2,2 0 0,1 0,20V16H2M22,20V16H24V20A2,2 0 0,1 22,22H18V20H22Z"/></svg>
-            <div style="font-size: 1.1rem; margin-bottom: 4px; color: var(--text-secondary); font-weight: 600;">Scan item to begin</div>
-            <div style="font-size: 0.85rem;">Scan a barcode, search, or select a category to view items.</div>
-          </div>
-        `;
+        catalogGrid.innerHTML = '';
       } else {
         catalogGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted);">No parts found matching search filters.</div>`;
       }
@@ -1575,6 +1746,63 @@ class ApexMotoPOS {
         });
       }
       catalogGrid.appendChild(card);
+    });
+  }
+
+  renderPOSQuickFavorites() {
+    const grid = document.getElementById('pos-quick-favorites-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    if (!this.parts || this.parts.length === 0) {
+      grid.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem;">No inventory items available.</div>';
+      return;
+    }
+
+    // Pick top fast-moving / available items
+    const favorites = this.parts.filter(p => p.stock > 0).slice(0, 6);
+
+    favorites.forEach(p => {
+      const card = document.createElement('div');
+      card.style.cssText = `
+        padding: 12px 14px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-card);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: transform 0.15s, border-color 0.15s, background 0.15s;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 8px;
+        min-height: 85px;
+      `;
+
+      card.onmouseover = () => {
+        card.style.borderColor = 'var(--accent)';
+        card.style.background = 'var(--bg-tertiary)';
+        card.style.transform = 'translateY(-2px)';
+      };
+      card.onmouseout = () => {
+        card.style.borderColor = 'var(--border-color)';
+        card.style.background = 'var(--bg-card)';
+        card.style.transform = 'none';
+      };
+
+      card.innerHTML = `
+        <div style="font-size: 0.68rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px;">${p.category}</div>
+        <div style="font-weight: 600; font-size: 0.84rem; color: var(--text-primary); line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;" title="${p.name}">${p.name}</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 2px;">
+          <span style="font-weight: 800; font-size: 0.9rem; color: var(--success);">₱${p.price.toFixed(2)}</span>
+          <span style="font-size: 0.72rem; font-weight: 700; color: var(--accent); background: rgba(255,95,31,0.12); padding: 3px 8px; border-radius: 4px;">+ Add</span>
+        </div>
+      `;
+
+      card.addEventListener('click', () => {
+        this.addToCart(p.id);
+      });
+
+      grid.appendChild(card);
     });
   }
 
@@ -2307,11 +2535,11 @@ class ApexMotoPOS {
     const barcodeConfig = {
       format: "CODE128",
       lineColor: "#000",
-      width: 1.5,
-      height: 40,
+      width: 1.4,
+      height: 28,
       displayValue: true,
-      fontSize: 11,
-      textMargin: 1,
+      fontSize: 9,
+      textMargin: 0,
       margin: 0
     };
 
@@ -2526,11 +2754,11 @@ class ApexMotoPOS {
       JsBarcode(`#bp-svg-${index}`, part.sku, {
         format: "CODE128",
         lineColor: "#000",
-        width: 1.5,
-        height: 40,
+        width: 1.4,
+        height: 28,
         displayValue: true,
-        fontSize: 11,
-        textMargin: 1,
+        fontSize: 9,
+        textMargin: 0,
         margin: 0
       });
     });
@@ -2932,6 +3160,7 @@ class ApexMotoPOS {
     }
 
     this.renderPOSCart();
+    this.showToast(`✓ Added "${part.name}" to cart`, "success");
   }
 
   updateCartQty(partId, newQty) {
@@ -4412,13 +4641,49 @@ class ApexMotoPOS {
 
     // Clear previous search
     document.getElementById('item-search-input').value = '';
-    catSelect.value = 'All';
-
+    this.selectedSearchIndex = 0;
     this.renderItemSearchResults();
     this.openModal('modal-item-search');
 
     // Auto-focus the search box
     setTimeout(() => document.getElementById('item-search-input').focus(), 150);
+  }
+
+  handleItemSearchKeydown(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      this.closeModal('modal-item-search');
+      return;
+    }
+
+    const rows = document.querySelectorAll('#item-search-results .search-item-row');
+    if (rows.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      this.selectedSearchIndex = Math.min(this.selectedSearchIndex + 1, rows.length - 1);
+      this.updateItemSearchSelection(rows);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      this.selectedSearchIndex = Math.max(this.selectedSearchIndex - 1, 0);
+      this.updateItemSearchSelection(rows);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (this.selectedSearchIndex >= 0 && this.selectedSearchIndex < rows.length) {
+        rows[this.selectedSearchIndex].click();
+      }
+    }
+  }
+
+  updateItemSearchSelection(rows) {
+    rows.forEach((row, idx) => {
+      if (idx === this.selectedSearchIndex) {
+        row.classList.add('selected');
+        row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      } else {
+        row.classList.remove('selected');
+      }
+    });
   }
 
   renderItemSearchResults() {
@@ -4438,14 +4703,19 @@ class ApexMotoPOS {
     }
 
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-secondary);">No items found. Try a different SKU or category.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-secondary);">No items found. Try a different SKU or category.</td></tr>`;
+      this.selectedSearchIndex = -1;
       return;
     }
 
-    filtered.forEach(p => {
+    // Clamp selected index
+    if (this.selectedSearchIndex < 0 || this.selectedSearchIndex >= filtered.length) {
+      this.selectedSearchIndex = 0;
+    }
+
+    filtered.forEach((p, idx) => {
       const isOut = p.stock === 0;
       const isLow = p.stock > 0 && p.stock <= p.minStock;
-      const inCart = this.cart.find(c => c.partId === p.id);
 
       let stockBadge = `<span class="badge badge-success">${p.stock} Avail</span>`;
       if (isOut) stockBadge = `<span class="badge badge-danger">Out of Stock</span>`;
@@ -4453,7 +4723,7 @@ class ApexMotoPOS {
 
       const tr = document.createElement('tr');
       tr.style.cssText = `border-bottom: 1px solid var(--border-color); opacity: ${isOut ? '0.5' : '1'}; transition: background 0.15s;`;
-      tr.className = 'search-item-row';
+      tr.className = `search-item-row ${idx === this.selectedSearchIndex ? 'selected' : ''}`;
       
       tr.innerHTML = `
         <td style="padding: 10px 14px; font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">${p.sku}</td>
@@ -4461,29 +4731,26 @@ class ApexMotoPOS {
         <td style="padding: 10px 14px; font-size: 0.8rem; color: var(--accent);">${p.category}</td>
         <td style="padding: 10px 14px; font-weight: 700; font-size: 0.9rem; color: var(--accent); text-align: right;">₱${p.price.toFixed(2)}</td>
         <td style="padding: 10px 14px; text-align: center;">${stockBadge}</td>
-        <td style="padding: 10px 14px; text-align: center;">
-          ${isOut 
-            ? `<span style="font-size:0.75rem; color:var(--text-muted);">Unavailable</span>` 
-            : `<button class="btn ${inCart ? 'btn-secondary' : 'btn-primary'} btn-sm" style="padding: 4px 10px; font-size: 0.78rem;">
-                ${inCart ? `+ Add More (${inCart.quantity})` : '+ Add Item'}
-               </button>`
-          }
-        </td>
       `;
 
       if (!isOut) {
-        const btn = tr.querySelector('button');
-        if (btn) {
-          btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.addToCart(p.id);
-            this.renderItemSearchResults();
-          });
-        }
         tr.style.cursor = 'pointer';
         tr.addEventListener('click', () => {
+          this.selectedSearchIndex = idx;
           this.addToCart(p.id);
           this.renderItemSearchResults();
+
+          // Show inline feedback message inside the modal
+          const feedbackEl = document.getElementById('catalog-add-feedback');
+          const feedbackTextEl = document.getElementById('catalog-add-feedback-text');
+          if (feedbackEl && feedbackTextEl) {
+            feedbackTextEl.textContent = `✓ Added 1x "${p.name}" to cart (₱${p.price.toFixed(2)})`;
+            feedbackEl.style.display = 'flex';
+            if (this.catalogFeedbackTimer) clearTimeout(this.catalogFeedbackTimer);
+            this.catalogFeedbackTimer = setTimeout(() => {
+              feedbackEl.style.display = 'none';
+            }, 3000);
+          }
         });
       }
 
@@ -4672,6 +4939,7 @@ class ApexMotoPOS {
       this.closeModal('modal-labor');
       
       this.renderMechanicList();
+      this.renderDashboard();
       
       this.showToast('Labor record added');
     } catch (err) {
@@ -4689,6 +4957,7 @@ class ApexMotoPOS {
       await DB.deleteLaborRecord(mechanicId, recordId);
       await this.loadData();
       this.renderMechanicList();
+      this.renderDashboard();
       this.showToast('Labor record deleted');
     } catch (err) {
       this.showToast('Error deleting labor record', 'danger');
