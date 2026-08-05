@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Diego's Motorcycle Parts & Accessories - POS</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body class="login-mode">
 
@@ -93,6 +93,7 @@
         <div class="user-profile">
           <div class="user-avatar" id="current-user-avatar">PM</div>
           <span style="font-size: 0.9rem; font-weight: 500;" id="current-user-name">Pew Miller</span>
+          <button id="btn-admin-settings" class="btn btn-secondary btn-sm" onclick="app.openSettingsModal()" style="margin-left: 10px; padding: 4px 8px; display: none;">Settings</button>
           <button class="btn btn-secondary btn-sm" onclick="app.logout()" style="margin-left: 10px; padding: 4px 8px;">Logout</button>
         </div>
       </div>
@@ -101,25 +102,35 @@
     <!-- Content View Panels -->
     <main class="content-area">
 
-      <!-- ================= LOGIN VIEW ================= -->
+      <!-- ================= LOGIN & REGISTER VIEW ================= -->
       <section id="view-login" class="view-panel active" style="justify-content: center; align-items: center; min-height: calc(100vh - 70px); background: var(--bg-body);">
-        <div class="card" style="width: 100%; max-width: 350px; padding: 30px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border-top: 4px solid var(--accent);">
-          <div style="margin-bottom: 24px;">
+        
+        <!-- LOGIN BOX -->
+        <div id="auth-login-card" class="card" style="width: 100%; max-width: 380px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border-top: 4px solid var(--accent);">
+          <div style="margin-bottom: 24px; text-align: center;">
             <div style="width: 64px; height: 64px; background: rgba(255,95,31,0.1); border-radius: 16px; display: inline-flex; justify-content: center; align-items: center; color: var(--accent); margin-bottom: 16px;">
               <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M12,17A2,2 0 0,0 14,15C14,13.89 13.1,13 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z"/></svg>
             </div>
             <h2 style="margin: 0; color: var(--text-primary);">System Login</h2>
-            <p style="margin: 8px 0 0; color: var(--text-secondary); font-size: 0.85rem;">Enter your 4-digit PIN</p>
+            <p style="margin: 8px 0 0; color: var(--text-secondary); font-size: 0.85rem;">Sign in with your username & password</p>
           </div>
           
-          <input type="password" id="login-pin-input" class="input-control" placeholder="••••" style="text-align: center; font-size: 24px; letter-spacing: 8px; font-weight: bold; padding: 12px; margin-bottom: 20px;" maxlength="4" onkeydown="if(event.key==='Enter') app.handleLogin()">
-          
-          <button class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px; font-size: 1rem;" onclick="app.handleLogin()">
-            Unlock POS
-          </button>
-          
+          <form id="login-form" onsubmit="event.preventDefault(); app.handleLogin(); return false;" style="display: flex; flex-direction: column; gap: 14px;">
+            <div>
+              <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 5px; color: var(--text-secondary);">Username</label>
+              <input type="text" id="login-username-input" class="input-control" placeholder="Enter username" required style="padding: 10px 12px; font-size: 0.95rem;" onkeydown="if(event.key==='Enter'){ event.preventDefault(); app.handleLogin(); }">
+            </div>
+            <div>
+              <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 5px; color: var(--text-secondary);">Password</label>
+              <input type="password" id="login-password-input" class="input-control" placeholder="Enter password" required style="padding: 10px 12px; font-size: 0.95rem;" onkeydown="if(event.key==='Enter'){ event.preventDefault(); app.handleLogin(); }">
+            </div>
 
+            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px; font-size: 1rem; margin-top: 10px;" onclick="app.handleLogin()">
+              Unlock POS
+            </button>
+          </form>
         </div>
+
       </section>
 
       <!-- ================= DASHBOARD VIEW ================= -->
@@ -205,18 +216,17 @@
               <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M6,16.5L3,19.44V11H6M11,14.66L9.43,13.32L8,14.64V7H11M16,13L13,16V3H16M18.81,12.81L17,11H22V16L20.21,14.21L13,21.36L9.53,18.34L5.75,22H3L9.47,15.66L13,18.64"/></svg>
             </div>
           </div>
-          <!-- Markup Income -->
-          <div class="card stat-card" style="border: 1px solid rgba(46,204,113,0.35); background: linear-gradient(135deg, rgba(46,204,113,0.06), transparent);">
+          <!-- Entry Capital -->
+          <div class="card stat-card" style="border: 1px solid rgba(52,152,219,0.35); background: linear-gradient(135deg, rgba(52,152,219,0.06), transparent);">
             <div class="stat-info">
-              <div class="stat-label" style="color: var(--success);">Markup Income (Today)</div>
-              <div class="stat-value" id="dash-markup-income" style="color: var(--success);">₱0.00</div>
-              <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;" id="dash-markup-info">Profit from parts sold</div>
+              <div class="stat-label" style="color: #3498db;">Entry Capital (Today)</div>
+              <div class="stat-value" id="dash-today-capital" style="color: #3498db;">₱0.00</div>
+              <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;" id="dash-capital-info">0 entries today</div>
             </div>
-            <div class="stat-icon" style="color: var(--success);">
-              <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M16 6L18.29 8.29L13.41 13.17L9.41 9.17L2 16.59L3.41 18L9.41 12L13.41 16L19.71 9.71L22 12V6H16Z"/></svg>
+            <div class="stat-icon" style="color: #3498db;">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M5 4H19C20.1 4 21 4.9 21 6V18C21 19.1 20.1 20 19 20H5C3.9 20 3 19.1 3 18V6C3 4.9 3.9 4 5 4M5 8V18H19V8H5M12 16C10.9 16 10 15.1 10 14C10 12.9 10.9 12 12 12C13.1 12 14 12.9 14 14C14 15.1 13.1 16 12 16Z"/></svg>
             </div>
           </div>
-          <div></div>
         </div>
 
         <div class="grid-cols-3" style="grid-template-columns: 2fr 1fr 1fr;">
@@ -291,7 +301,7 @@
         </div>
 
         <!-- Metric Cards -->
-        <div class="grid-cols-4" style="margin-bottom: 24px;">
+        <div class="grid-cols-4" style="margin-bottom: 24px; grid-template-columns: repeat(5, 1fr);">
           <div class="card stat-card card-accent">
             <div class="stat-info">
               <div class="stat-label">Gross Sales</div>
@@ -302,6 +312,12 @@
             <div class="stat-info">
               <div class="stat-label">Total Labor</div>
               <div class="stat-value" id="report-total-labor">₱0.00</div>
+            </div>
+          </div>
+          <div class="card stat-card" style="border: 1px solid rgba(52,152,219,0.4);">
+            <div class="stat-info">
+              <div class="stat-label" style="color: #3498db;">Entry Capital</div>
+              <div class="stat-value" id="report-entry-capital" style="color: #3498db;">₱0.00</div>
             </div>
           </div>
           <div class="card stat-card" style="border: 1px solid rgba(255,59,48,0.4);">
@@ -315,6 +331,29 @@
               <div class="stat-label">Net Total (Calculated)</div>
               <div class="stat-value" id="report-net-total" style="color: var(--accent);">₱0.00</div>
             </div>
+          </div>
+        </div>
+
+        <!-- Entry Capital Log Table -->
+        <div class="card" style="margin-bottom: 30px;">
+          <div class="card-title" style="color: #3498db; display: flex; align-items: center; gap: 8px;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M5 4H19C20.1 4 21 4.9 21 6V18C21 19.1 20.1 20 19 20H5C3.9 20 3 19.1 3 18V6C3 4.9 3.9 4 5 4M5 8V18H19V8H5M12 16C10.9 16 10 15.1 10 14C10 12.9 10.9 12 12 12C13.1 12 14 12.9 14 14C14 15.1 13.1 16 12 16Z"/></svg>
+            Entry Capital & Floating Fund Log
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date & Time</th>
+                  <th>Description / Source</th>
+                  <th>Recorded By</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody id="report-capital-table">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -356,6 +395,7 @@
               <div class="scanner-input-wrapper">
                 <svg class="scanner-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M4,6H6V18H4V6M7,6H8V18H7V6M9,6H12V18H9V6M13,6H14V18H13V6M16,6H18V18H16V6M19,6H20V18H19V6M2,4V8H0V4A2,2 0 0,1 2,2H6V4H2M22,2A2,2 0 0,1 24,4V8H22V4H18V2H22M2,16V20H6V22H2A2,2 0 0,1 0,20V16H2M22,20V16H24V20A2,2 0 0,1 22,22H18V20H22Z"/></svg>
                 <input type="text" class="input-control" id="pos-search-input" placeholder="Scan barcode or search by name, SKU, brand...">
+                <kbd class="hotkey-badge search-hotkey" title="Keyboard Shortcut: Press F2 or Alt+S">F2</kbd>
               </div>
               <button class="btn btn-secondary" id="pos-search-clear">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
@@ -366,6 +406,7 @@
             <div class="pos-toolbar">
               <div class="pos-toolbar-left">
                 <button class="btn btn-secondary btn-sm" id="btn-hold-order">
+                  <kbd class="hotkey-badge">F8</kbd>
                   <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M19,21H5V9H19M12,2A3,3 0 0,0 9,5V7H5A2,2 0 0,0 3,9V21A2,2 0 0,0 5,23H19A2,2 0 0,0 21,21V9A2,2 0 0,0 19,7H15V5A3,3 0 0,0 12,2M12,4A1,1 0 0,1 13,5V7H11V5A1,1 0 0,1 12,4Z"/></svg>
                   Hold
                 </button>
@@ -377,17 +418,45 @@
                   <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="margin-right: 4px;"><path d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"/></svg>
                   2nd Monitor
                 </a>
+                <button class="btn btn-secondary btn-sm" onclick="app.openLaborModal()" style="gap: 6px;">
+                  🛠️ Quick Add Labor
+                </button>
               </div>
             </div>
-            
-            <!-- Category Tabs -->
-            <div class="catalog-tabs" id="pos-category-tabs">
-              <!-- Category filters dynamically populated -->
-            </div>
-            
-            <!-- Product Grid -->
-            <div class="pos-catalog-grid" id="pos-catalog-grid">
-              <!-- Parts catalog dynamically populated -->
+
+            <!-- POS Workspace Main Body: Fast-Moving Items & Quick Labor Actions -->
+            <div style="display: flex; flex-direction: column; gap: 20px; padding: 20px 0;">
+
+              <!-- Fast-Moving Quick Select Section -->
+              <div>
+                <div id="pos-quick-favorites-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;">
+                  <!-- Populated via JS -->
+                </div>
+              </div>
+
+              <!-- Shortcut Keys Bar -->
+              <div>
+                <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Quick Key Controls</div>
+                <div class="shortcut-cards-grid">
+                  <div class="shortcut-card" onclick="document.getElementById('pos-search-input').focus()">
+                    <div class="shortcut-key">F2</div>
+                    <div class="shortcut-desc">Focus Scanner Input</div>
+                  </div>
+                  <div class="shortcut-card" onclick="app.openItemSearchModal()">
+                    <div class="shortcut-key">F5</div>
+                    <div class="shortcut-desc">Search Catalog</div>
+                  </div>
+                  <div class="shortcut-card" onclick="app.holdOrder()">
+                    <div class="shortcut-key">F8</div>
+                    <div class="shortcut-desc">Hold Transaction</div>
+                  </div>
+                  <div class="shortcut-card" onclick="app.openCheckoutModal()">
+                    <div class="shortcut-key">F9</div>
+                    <div class="shortcut-desc">Proceed to Payment</div>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
 
@@ -413,7 +482,10 @@
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="opacity: 0.5;"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>
                   <span>Walk-in Transaction</span>
                 </div>
-                <button class="btn btn-secondary btn-sm" onclick="app.openSelectCustomerModal()">Attach</button>
+                <button class="btn btn-secondary btn-sm" onclick="app.openSelectCustomerModal()">
+                  <kbd class="hotkey-badge">F6</kbd>
+                  Attach
+                </button>
               </div>
               <div id="cart-has-customer" style="display: none; margin-bottom: 8px;" class="selected-customer-info">
                 <div style="flex-grow: 1;">
@@ -444,30 +516,28 @@
 
             <!-- Cart pricing summary & Actions -->
             <div class="cart-summary">
-              <div class="summary-row">
-                <span>Parts Subtotal</span>
-                <span id="cart-subtotal-parts">₱0.00</span>
+              <!-- Compact horizontal pricing sub-bar -->
+              <div class="cart-summary-compact-bar">
+                <span>Sub: <strong id="cart-subtotal" style="color: var(--text-primary);">₱0.00</strong></span>
+                <span id="cart-subtotal-parts" style="display: none;">₱0.00</span>
+                <span id="cart-labor-row" style="display: none; color: var(--warning);">Labor: <strong id="cart-labor-total">₱0.00</strong></span>
+                <span style="display: inline-flex; align-items: center; gap: 4px;">
+                  Disc: <input type="number" class="input-control" id="cart-discount-input" value="0.00" step="1" min="0" oninput="app.calculateCartTotals()">
+                </span>
               </div>
-              <div class="summary-row" id="cart-labor-row" style="display: none; color: var(--warning);">
-                <span>Labor Total</span>
-                <span id="cart-labor-total">₱0.00</span>
-              </div>
-              <div class="summary-row" style="border-top: 1px dashed var(--border-color); padding-top: 8px;">
-                <span style="font-weight: 600;">Gross Total</span>
-                <span id="cart-subtotal" style="font-weight: 600;">₱0.00</span>
-              </div>
-              <div class="summary-row" style="align-items: center;">
-                <span>Discount (₱)</span>
-                <input type="number" class="input-control" id="cart-discount-input" value="0.00" step="1" min="0" style="width: 80px; padding: 4px 8px; text-align: right; font-size: 0.85rem;">
-              </div>
+
               <div class="summary-row total-row">
                 <span>Grand Total</span>
                 <span id="cart-total">₱0.00</span>
               </div>
               
               <div class="cart-actions">
-                <button class="btn btn-secondary" onclick="app.clearCart()">Clear Order</button>
-                <button class="btn btn-primary" onclick="app.openCheckoutModal()">Pay & Invoice</button>
+                <button class="btn btn-secondary btn-clear-order" onclick="app.clearCart()">
+                  <kbd class="hotkey-badge">F10</kbd> Clear Order
+                </button>
+                <button class="btn btn-primary btn-pay-invoice" onclick="app.openCheckoutModal()">
+                  <kbd class="hotkey-badge primary-hotkey">F9</kbd> Pay & Invoice
+                </button>
               </div>
             </div>
           </div>
@@ -648,6 +718,7 @@
       <div class="shortcut-item"><span class="key-badge">F2</span> POS Cart</div>
       <div class="shortcut-item"><span class="key-badge">F3</span> Service Board</div>
       <div class="shortcut-item"><span class="key-badge">F4</span> Parts Inventory</div>
+      <div class="shortcut-item"><span class="key-badge">F5</span> Search Catalog</div>
       <div class="shortcut-item"><span class="key-badge">F6</span> Customers CRM</div>
       <div class="shortcut-item"><span class="key-badge">F9</span> Pay / Invoice</div>
       <div class="shortcut-item"><span class="key-badge">F10</span> Discard Order</div>
@@ -661,27 +732,44 @@
 
   <!-- Item Search Modal (POS Add Item) -->
   <div class="modal-overlay" id="modal-item-search">
-    <div class="modal-container" style="max-width: 720px; width: 95%;">
+    <div class="modal-container" style="max-width: 920px; width: 95%;">
       <div class="modal-header">
         <h3 class="modal-title">Add Item to Order</h3>
         <button class="modal-close" onclick="app.closeModal('modal-item-search')">×</button>
       </div>
-      <div class="modal-body" style="padding-bottom: 0;">
+        <!-- Added Item Feedback Banner -->
+        <div id="catalog-add-feedback" style="display: none; padding: 10px 14px; background: rgba(0, 230, 118, 0.15); border: 1px solid var(--success); border-radius: var(--radius-sm); color: var(--success); font-weight: 600; font-size: 0.85rem; margin-bottom: 12px; align-items: center; justify-content: space-between;">
+          <span id="catalog-add-feedback-text">Item added to cart</span>
+          <span style="font-size: 0.75rem; opacity: 0.8;">Click more items to add</span>
+        </div>
 
         <!-- Search Row -->
         <div style="display: flex; gap: 10px; margin-bottom: 14px;">
           <div style="position: relative; flex-grow: 1;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:0.4;pointer-events:none;"><path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/></svg>
-            <input type="text" class="input-control" id="item-search-input" placeholder="Search by name or SKU..." style="padding-left: 36px;" oninput="app.renderItemSearchResults()">
+            <input type="text" class="input-control" id="item-search-input" placeholder="Search by name, SKU, or category..." style="padding-left: 36px;" oninput="app.renderItemSearchResults()" onkeydown="app.handleItemSearchKeydown(event)">
           </div>
-          <select class="input-control" id="item-search-category" style="width: 180px;" onchange="app.renderItemSearchResults()">
+          <select class="input-control" id="item-search-category" style="width: 200px;" onchange="app.renderItemSearchResults()">
             <option value="All">All Categories</option>
           </select>
         </div>
 
-        <!-- Results Grid -->
-        <div id="item-search-results" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; max-height: 380px; overflow-y: auto; padding-bottom: 16px;">
-          <!-- Populated via JS -->
+        <!-- Compact Table View -->
+        <div class="table-container" style="max-height: 420px; overflow-y: auto;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead style="position: sticky; top: 0; background: var(--bg-card); z-index: 2; border-bottom: 1px solid var(--border-color);">
+              <tr>
+                <th style="padding: 10px 14px; font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); text-align: left; width: 140px;">SKU</th>
+                <th style="padding: 10px 14px; font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); text-align: left;">Item Name</th>
+                <th style="padding: 10px 14px; font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); text-align: left; width: 130px;">Category</th>
+                <th style="padding: 10px 14px; font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); text-align: right; width: 110px;">Price</th>
+                <th style="padding: 10px 14px; font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); text-align: center; width: 110px;">Stock</th>
+              </tr>
+            </thead>
+            <tbody id="item-search-results">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
         </div>
 
       </div>
@@ -764,6 +852,20 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="app.closeModal('modal-part')">Cancel</button>
         <button class="btn btn-primary" id="btn-save-part">Save Part</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Prompt Modal -->
+  <div class="modal-overlay" id="modal-custom-prompt">
+    <div class="modal-container" style="max-width: 450px;">
+      <div class="modal-body" style="padding-bottom: 20px; padding-top: 24px;">
+        <div id="custom-prompt-message" style="margin-bottom: 16px; font-size: 1.05rem; line-height: 1.5; color: var(--text-primary);"></div>
+        <input type="text" class="input-control" id="custom-prompt-input" style="font-size: 1.2rem; padding: 12px; width: 100%;">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-custom-prompt-cancel">Cancel</button>
+        <button class="btn btn-primary" id="btn-custom-prompt-ok">OK</button>
       </div>
     </div>
   </div>
@@ -1162,7 +1264,9 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="app.closeModal('modal-checkout')">Cancel</button>
-        <button class="btn btn-success" onclick="app.completeTransaction()">Authorize &amp; Print</button>
+        <button class="btn btn-success" onclick="app.completeTransaction()">
+          <kbd class="hotkey-badge primary-hotkey" style="background: rgba(255,255,255,0.3); border-color: rgba(255,255,255,0.5);">Enter ↵</kbd> Authorize &amp; Print
+        </button>
       </div>
     </div>
   </div>
@@ -1197,14 +1301,14 @@
       </div>
       <div class="modal-body" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: var(--bg-primary); border-radius: var(--radius-md); padding: 24px; border: 1px dashed var(--border-color); margin-top: 10px;">
         <!-- Screen Preview of the Barcode -->
-        <div id="screen-barcode-preview" style="background-color: #fff; color: #000; width: 231px; height: 124px; box-sizing: border-box; padding: 6px 10px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow: hidden;">
-          <div id="preview-barcode-name" style="font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; margin-bottom: 2px; font-family: Arial, sans-serif;"></div>
-          <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; min-height: 0;">
-            <svg id="preview-barcode-svg" style="max-width: 100%; max-height: 100%; display: block;"></svg>
+        <div id="screen-barcode-preview" style="background-color: #fff; color: #000; width: 210px; padding: 4px 6px; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow: hidden; border-radius: 4px;">
+          <div id="preview-barcode-name" style="font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; margin-bottom: 1px; font-family: Arial, sans-serif;"></div>
+          <div style="display: flex; align-items: center; justify-content: center; width: 100%; margin: 1px 0;">
+            <svg id="preview-barcode-svg" style="max-width: 100%; height: auto; display: block;"></svg>
           </div>
-          <div id="preview-barcode-price" style="font-size: 16px; font-weight: 900; margin-top: 2px; font-family: Arial, sans-serif;"></div>
+          <div id="preview-barcode-price" style="font-size: 13px; font-weight: 900; margin-top: 0px; font-family: Arial, sans-serif;"></div>
         </div>
-        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 16px; text-align: center;">1.54" x 0.83" Thermal Sticker</p>
+        <p style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 10px; text-align: center;">1.54" x 0.83" Thermal Sticker</p>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="app.closeModal('modal-barcode')">Cancel</button>
@@ -1252,6 +1356,53 @@
 
   <!-- Print Container -->
   <div id="print-receipt-container"></div>
+
+  <!-- Settings Modal (Admin Only) -->
+  <div class="modal-overlay" id="modal-settings">
+    <div class="modal-container" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 class="modal-title">System Settings</h3>
+        <button class="modal-close" onclick="app.closeModal('modal-settings')">×</button>
+      </div>
+      <div class="modal-body">
+        <h4 style="margin-bottom: 12px;">Cashier Role Permissions</h4>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px;">Select which modules the Cashier role is allowed to access.</p>
+        
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="cb-access-dashboard"> Dashboard Overview
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="cb-access-pos"> Point of Sale
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="cb-access-service"> Service Tracker
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="cb-access-sales-history"> Sales History
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="cb-access-inventory"> Parts Inventory
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="cb-access-customers"> Customers (Debt)
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="cb-access-mechanics"> Mechanics (Labor)
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="cb-access-reports"> Sales Reports
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="app.closeModal('modal-settings')">Cancel</button>
+        <button class="btn btn-primary" onclick="app.saveSettings()">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-holder" class="toast-container"></div>
 
   <!-- Batch Barcode Print Container (Hidden from Screen) -->
   <div id="print-all-barcodes-container"></div>
@@ -1456,7 +1607,7 @@
 
   <!-- JavaScript Scripts -->
   <script src="mockData.js"></script>
-  <script src="php_db.js?v=2"></script>
-  <script src="app.js?v=2"></script>
+  <script src="php_db.js?v=4"></script>
+  <script src="app.js?v=20"></script>
 </body>
 </html>

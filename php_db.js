@@ -120,7 +120,11 @@ const DB = {
   },
 
   async createTransaction(tx) {
-    await apiRequest('createTransaction', { tx });
+    const res = await apiRequest('createTransaction', { tx });
+    if (res && res.id) {
+      tx.id = res.id;
+    }
+    return res;
   },
 
   async updateTransactionPaymentMethod(transactionId, newMethod) {
@@ -174,6 +178,16 @@ const DB = {
 
   async deleteAllSalesData() {
     await apiRequest('deleteAllSalesData');
+  },
+
+  // ─── SETTINGS ────────────────────────────────────────────────────────
+  async getSettings() {
+    const res = await apiRequest('getSettings');
+    return res.data;
+  },
+
+  async updateSettings(settings) {
+    await apiRequest('updateSettings', { settings });
   },
 };
 
