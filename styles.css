@@ -2622,3 +2622,165 @@ body.login-mode .content-area {
 .search-item-row:hover {
   background-color: rgba(255, 255, 255, 0.05);
 }
+
+/* =====================================================================
+   CLOUD SYNC STATUS INDICATOR
+   ===================================================================== */
+
+.sync-status-panel {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  transition: background 0.2s;
+}
+
+.sync-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  gap: 6px;
+}
+
+.sync-indicator {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sync-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background-color 0.4s;
+}
+
+/* State: synced — solid green */
+.sync-dot.sync-synced {
+  background: var(--success);
+  box-shadow: 0 0 6px rgba(0, 230, 118, 0.6);
+}
+
+/* State: pending — pulsing yellow */
+.sync-dot.sync-pending {
+  background: var(--warning);
+  animation: sync-pulse-warning 1.4s infinite;
+}
+
+/* State: offline — dim red */
+.sync-dot.sync-offline {
+  background: var(--danger);
+  box-shadow: 0 0 5px rgba(255, 23, 68, 0.4);
+  animation: none;
+}
+
+/* State: syncing — pulsing accent */
+.sync-dot.sync-syncing {
+  background: var(--accent);
+  animation: sync-pulse-accent 0.8s infinite;
+}
+
+/* State: checking — muted grey pulse */
+.sync-dot.sync-checking {
+  background: var(--text-muted);
+  animation: sync-pulse-grey 1.2s infinite;
+}
+
+@keyframes sync-pulse-warning {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 179, 0, 0.5); }
+  50%       { box-shadow: 0 0 0 5px rgba(255, 179, 0, 0); }
+}
+@keyframes sync-pulse-accent {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 95, 31, 0.5); }
+  50%       { box-shadow: 0 0 0 5px rgba(255, 95, 31, 0); }
+}
+@keyframes sync-pulse-grey {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.sync-label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sync-badge {
+  background: var(--warning);
+  color: #000;
+  font-size: 0.6rem;
+  font-weight: 700;
+  border-radius: 9px;
+  padding: 1px 5px;
+  min-width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.sync-now-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 4px 6px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.sync-now-btn:hover {
+  background: rgba(255, 95, 31, 0.15);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Expandable details panel */
+.sync-details-panel {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+  padding: 0;
+}
+
+.sync-details-panel.open {
+  max-height: 140px;
+  padding-top: 8px;
+}
+
+.sync-detail-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.sync-detail-row:last-child {
+  border-bottom: none;
+}
+
+.sync-detail-row span:last-child {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.sync-detail-error {
+  color: rgba(255, 23, 68, 0.8);
+}
+
+.sync-detail-error span:last-child {
+  color: var(--danger);
+}

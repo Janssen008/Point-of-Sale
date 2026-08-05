@@ -27,6 +27,27 @@ function generate_uuid() {
     );
 }
 
+// ─── Cloud Sync Queue Helper ─────────────────────────────────────────
+// Logs a write operation to the sync_queue table so the sync engine
+// can push it to Supabase when internet is available.
+function queue_sync($pdo, $table, $record_id, $action, $payload = null) {
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO sync_queue (table_name, record_id, action, payload)
+            VALUES (?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $table,
+            (string)$record_id,
+            $action,
+            $payload !== null ? json_encode($payload) : null,
+        ]);
+    } catch (Exception $e) {
+        // Sync queue is non-critical — log but don't fail the request
+        error_log('[SyncQueue] Failed to queue sync: ' . $e->getMessage());
+    }
+}
+
 // Get JSON input body
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
 $action = $_GET['action'] ?? $input['action'] ?? '';
@@ -86,6 +107,8 @@ try {
                 $altJson
             ]);
             $part['id'] = $id;
+            // Queue for cloud sync
+            queue_sync($pdo, 'parts', $id, 'upsert', array_merge($part, ['id' => $id]));
             echo json_encode(['data' => $part]);
             break;
 
@@ -94,6 +117,11 @@ try {
             $newStock = (int)($input['newStock'] ?? 0);
             $stmt = $pdo->prepare("UPDATE parts SET stock = ? WHERE id = ?");
             $stmt->execute([$newStock, $partId]);
+            // Queue stock update for cloud sync
+            $sRow = $pdo->prepare("SELECT * FROM parts WHERE id = ?");
+            $sRow->execute([$partId]);
+            $partRow = $sRow->fetch();
+            if ($partRow) queue_sync($pdo, 'parts', $partId, 'upsert', $partRow);
             echo json_encode(['success' => true]);
             break;
 
@@ -101,6 +129,7 @@ try {
             $partId = $input['partId'] ?? '';
             $stmt = $pdo->prepare("DELETE FROM parts WHERE id = ?");
             $stmt->execute([$partId]);
+            queue_sync($pdo, 'parts', $partId, 'delete');
             echo json_encode(['success' => true]);
             break;
 
@@ -160,6 +189,12 @@ try {
                 $cust['email'] ?? null,
                 $debt
             ]);
+            // Queue customer for cloud sync
+            queue_sync($pdo, 'customers', $id, 'upsert', [
+                'id' => $id, 'name' => $cust['name'], 'phone' => $cust['phone'],
+                'email' => $cust['email'] ?? null,
+                'outstanding_debt' => $debt,
+            ]);
             echo json_encode(['data' => ['id' => $id]]);
             break;
 
@@ -167,6 +202,7 @@ try {
             $customerId = $input['customerId'] ?? '';
             $stmt = $pdo->prepare("DELETE FROM customers WHERE id = ?");
             $stmt->execute([$customerId]);
+            queue_sync($pdo, 'customers', $customerId, 'delete');
             echo json_encode(['success' => true]);
             break;
 
@@ -174,6 +210,10 @@ try {
             $customerId = $input['customerId'] ?? '';
             $stmt = $pdo->prepare("UPDATE customers SET outstanding_debt = 0 WHERE id = ?");
             $stmt->execute([$customerId]);
+            $row = $pdo->prepare("SELECT * FROM customers WHERE id = ?");
+            $row->execute([$customerId]);
+            $custRow = $row->fetch();
+            if ($custRow) queue_sync($pdo, 'customers', $customerId, 'upsert', $custRow);
             echo json_encode(['success' => true]);
             break;
 
@@ -197,6 +237,12 @@ try {
                 $veh['plate'] ?? null,
                 $veh['vin'] ?? null
             ]);
+            queue_sync($pdo, 'vehicles', $id, 'upsert', [
+                'id' => $id, 'customer_id' => $customerId,
+                'year' => $veh['year'] ?? null, 'make' => $veh['make'],
+                'model' => $veh['model'], 'plate' => $veh['plate'] ?? null,
+                'vin' => $veh['vin'] ?? null,
+            ]);
             echo json_encode(['data' => ['id' => $id]]);
             break;
 
@@ -204,6 +250,7 @@ try {
             $vehicleId = $input['vehicleId'] ?? '';
             $stmt = $pdo->prepare("DELETE FROM vehicles WHERE id = ?");
             $stmt->execute([$vehicleId]);
+            queue_sync($pdo, 'vehicles', $vehicleId, 'delete');
             echo json_encode(['success' => true]);
             break;
 
@@ -262,6 +309,16 @@ try {
                 $job['status'] ?? 'Draft',
                 (float)($job['laborCost'] ?? 0)
             ]);
+            queue_sync($pdo, 'service_jobs', $job['id'], 'upsert', [
+                'id' => $job['id'],
+                'customer_id' => !empty($job['customerId']) ? $job['customerId'] : null,
+                'customer_name' => $job['customerName'],
+                'vehicle' => $job['vehicle'],
+                'description' => $job['description'],
+                'mechanic' => $job['mechanic'],
+                'status' => $job['status'] ?? 'Draft',
+                'labor_cost' => (float)($job['laborCost'] ?? 0),
+            ]);
             echo json_encode(['success' => true]);
             break;
 
@@ -279,6 +336,10 @@ try {
                 (float)($job['laborCost'] ?? 0),
                 $job['id']
             ]);
+            $row = $pdo->prepare("SELECT * FROM service_jobs WHERE id = ?");
+            $row->execute([$job['id']]);
+            $jobRow = $row->fetch();
+            if ($jobRow) queue_sync($pdo, 'service_jobs', $job['id'], 'upsert', $jobRow);
             echo json_encode(['success' => true]);
             break;
 
@@ -286,6 +347,7 @@ try {
             $jobId = $input['jobId'] ?? '';
             $stmt = $pdo->prepare("DELETE FROM service_jobs WHERE id = ?");
             $stmt->execute([$jobId]);
+            queue_sync($pdo, 'service_jobs', $jobId, 'delete');
             echo json_encode(['success' => true]);
             break;
 
@@ -450,6 +512,19 @@ try {
             }
 
             $pdo->commit();
+            // Queue transaction for cloud sync
+            $txRow = $pdo->prepare("SELECT * FROM transactions WHERE id = ?");
+            $txRow->execute([$txId]);
+            $txData = $txRow->fetch();
+            if ($txData) queue_sync($pdo, 'transactions', $txId, 'upsert', $txData);
+            // Queue transaction items
+            if (!empty($tx['items'])) {
+                $iRows = $pdo->prepare("SELECT * FROM transaction_items WHERE transaction_id = ?");
+                $iRows->execute([$txId]);
+                foreach ($iRows->fetchAll() as $iRow) {
+                    queue_sync($pdo, 'transaction_items', $iRow['id'], 'upsert', $iRow);
+                }
+            }
             echo json_encode(['success' => true, 'id' => $txId]);
             break;
 
@@ -458,6 +533,10 @@ try {
             $newMethod = $input['newMethod'] ?? 'Cash';
             $stmt = $pdo->prepare("UPDATE transactions SET payment_method = ? WHERE id = ?");
             $stmt->execute([$newMethod, $txId]);
+            $row = $pdo->prepare("SELECT * FROM transactions WHERE id = ?");
+            $row->execute([$txId]);
+            $txRow = $row->fetch();
+            if ($txRow) queue_sync($pdo, 'transactions', $txId, 'upsert', $txRow);
             echo json_encode(['success' => true]);
             break;
 
@@ -508,6 +587,9 @@ try {
                 $mech['name'],
                 $mech['role'] ?? null
             ]);
+            queue_sync($pdo, 'mechanics', $id, 'upsert', [
+                'id' => $id, 'name' => $mech['name'], 'role' => $mech['role'] ?? null,
+            ]);
             echo json_encode(['data' => ['id' => $id]]);
             break;
 
@@ -515,6 +597,7 @@ try {
             $mechanicId = $input['mechanicId'] ?? '';
             $stmt = $pdo->prepare("DELETE FROM mechanics WHERE id = ?");
             $stmt->execute([$mechanicId]);
+            queue_sync($pdo, 'mechanics', $mechanicId, 'delete');
             echo json_encode(['success' => true]);
             break;
 
@@ -534,6 +617,12 @@ try {
                 (float)$record['amount'],
                 $record['date'] ?? date('Y-m-d')
             ]);
+            queue_sync($pdo, 'labor_records', $id, 'upsert', [
+                'id' => $id, 'mechanic_id' => $mechanicId,
+                'description' => $record['description'],
+                'amount' => (float)$record['amount'],
+                'date' => $record['date'] ?? date('Y-m-d'),
+            ]);
             echo json_encode(['data' => ['id' => $id]]);
             break;
 
@@ -541,6 +630,7 @@ try {
             $recordId = $input['recordId'] ?? '';
             $stmt = $pdo->prepare("DELETE FROM labor_records WHERE id = ?");
             $stmt->execute([$recordId]);
+            queue_sync($pdo, 'labor_records', $recordId, 'delete');
             echo json_encode(['success' => true]);
             break;
 
@@ -575,6 +665,11 @@ try {
                 $entry['notes'] ?? '',
                 $entry['date'] ?? date('Y-m-d H:i:s')
             ]);
+            queue_sync($pdo, 'cash_outs', $id, 'upsert', [
+                'id' => $id, 'amount' => (float)$entry['amount'],
+                'reason' => $entry['reason'], 'notes' => $entry['notes'] ?? '',
+                'date' => $entry['date'] ?? date('Y-m-d H:i:s'),
+            ]);
             echo json_encode(['data' => ['id' => $id]]);
             break;
 
@@ -603,6 +698,10 @@ try {
                 (float)$entry['amount'],
                 $entry['date'] ?? date('Y-m-d H:i:s')
             ]);
+            queue_sync($pdo, 'entry_capitals', $id, 'upsert', [
+                'id' => $id, 'amount' => (float)$entry['amount'],
+                'date' => $entry['date'] ?? date('Y-m-d H:i:s'),
+            ]);
             echo json_encode(['data' => ['id' => $id]]);
             break;
 
@@ -614,6 +713,10 @@ try {
             $pdo->exec("DELETE FROM entry_capitals;");
             $pdo->exec("DELETE FROM labor_records;");
             $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
+            // Queue cloud deletions for all sales tables
+            foreach (['transaction_items','transactions','cash_outs','entry_capitals','labor_records'] as $tbl) {
+                queue_sync($pdo, $tbl, 'ALL', 'delete_all');
+            }
             echo json_encode(['success' => true]);
             break;
 

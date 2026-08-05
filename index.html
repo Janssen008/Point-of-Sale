@@ -76,8 +76,26 @@
     </ul>
     
     <div class="sidebar-footer">
-      <div>Diego's POS v2.6.4</div>
-      <div>Local Time: 10:06 AM</div>
+      <!-- Cloud Sync Status Panel -->
+      <div class="sync-status-panel" id="sync-panel">
+        <div class="sync-status-header" onclick="document.getElementById('sync-details-panel').classList.toggle('open')">
+          <div class="sync-indicator">
+            <span class="sync-dot" id="sync-status-dot"></span>
+            <span class="sync-label" id="sync-status-text">Checking...</span>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <span class="sync-badge" id="sync-pending-badge" style="display:none;"></span>
+            <button class="sync-now-btn" id="sync-now-btn" onclick="event.stopPropagation(); SyncEngine.runFullSync()" title="Sync All to Cloud">
+              <svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" fill="currentColor"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="sync-details-panel" id="sync-details-panel">
+          <!-- Populated by sync.js -->
+        </div>
+      </div>
+      <div style="font-size:0.7rem; color: var(--text-muted); margin-top: 6px;">Diego's POS v2.6.4</div>
+      <div style="font-size:0.7rem; color: var(--text-muted);">Local Time: <span id="sidebar-clock">--</span></div>
     </div>
   </aside>
 
@@ -1608,6 +1626,7 @@
   <!-- JavaScript Scripts -->
   <script src="mockData.js"></script>
   <script src="php_db.js?v=4"></script>
+  <script src="sync.js?v=1"></script>
   <script src="app.js?v=20"></script>
 </body>
 </html>
