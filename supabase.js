@@ -4,8 +4,8 @@
 // Found at: Supabase Dashboard → Project Settings → API
 // =====================================================================
 
-const SUPABASE_URL  = 'https://oevkmvxwukqujjeuwtef.supabase.co';   // e.g. https://abcdefgh.supabase.co
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ldmttdnh3dWtxdWpqZXV3dGVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNTMzMDEsImV4cCI6MjA5OTYyOTMwMX0.MIhBeKJDTTWEORuLyEhWywUJXurOcD7opMLCp2Q4QEw';      // starts with "eyJ..."
+const SUPABASE_URL  = 'https://ofzfcemwqhqsnbvkosaq.supabase.co';   // e.g. https://abcdefgh.supabase.co
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mZnplemN3aHFzbnZia29zYXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4OTgxODMsImV4cCI6MjEwMTQ3NDE4M30.w3Tb1DI663lq9VDwbDg93zmmx0MtjhlPNAY3T1TuOdY';      // starts with "eyJ..."
 
 // Initialize the Supabase client (loaded via CDN in index.html)
 let _supabase;

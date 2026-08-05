@@ -3160,7 +3160,7 @@ class ApexMotoPOS {
     }
 
     this.renderPOSCart();
-    this.showToast(`✓ Added "${part.name}" to cart`, "success");
+    // this.showToast(`✓ Added "${part.name}" to cart`, "success"); // Removed as requested
   }
 
   updateCartQty(partId, newQty) {
